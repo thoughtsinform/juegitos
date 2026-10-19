@@ -11,6 +11,7 @@ class SoundController {
   }
 
   initAudio() {
+    if (typeof window === 'undefined') return;
     if (!this.ctx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) {
@@ -23,7 +24,7 @@ class SoundController {
   }
 
   vibrate(ms = 15) {
-    if ('vibrate' in navigator) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {
         navigator.vibrate(ms);
       } catch (e) {

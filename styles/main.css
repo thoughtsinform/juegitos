@@ -43,6 +43,71 @@ html, body {
 }
 
 /* ========================================================
+   ARCADE GAME SWITCHER TABS
+======================================================== */
+#arcadeNavContainer {
+  width: 100%;
+  background: #03200c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  justify-content: center;
+  padding: 5px 12px;
+  position: relative;
+  z-index: 95;
+}
+
+.arcade-tab-bar {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 3px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.arcade-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.arcade-tab-btn .tab-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.arcade-tab-btn.active {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.45);
+}
+
+.arcade-tab-btn:active {
+  transform: scale(0.96);
+}
+
+/* Landscape adjustments for tabs */
+@media (orientation: landscape) {
+  #arcadeNavContainer {
+    padding: 3px 12px;
+  }
+  .arcade-tab-btn {
+    padding: 3px 14px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ========================================================
    1. LOGIN SCREEN MODAL
 ======================================================== */
 .login-overlay {

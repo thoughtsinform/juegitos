@@ -1,0 +1,789 @@
+/* ========================================================
+   Words of Wonders (WoW) - Nature Wonder Theme & Stylesheet
+   Juegitos PWA Arcade
+   High-Contrast Outdoor Legibility for Ellen & Susan
+======================================================== */
+
+:root {
+  --wow-bg-top: #0a1c2a;
+  --wow-bg-mid: #163e59;
+  --wow-bg-bottom: #2d6a82;
+  --wow-sunset-glow: #e07a5f;
+  
+  --tile-bg: #ffffff;
+  --tile-text: #0f172a;
+  --tile-border: #ffffff;
+  --tile-shadow: 0 4px 10px rgba(0, 0, 0, 0.35), 0 2px 0 #cbd5e1;
+  
+  --slot-bg: rgba(255, 255, 255, 0.12);
+  --slot-border: rgba(255, 255, 255, 0.32);
+  --slot-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+  
+  --gold-accent: #f59e0b;
+  --gold-glow: rgba(245, 158, 11, 0.6);
+  --cyan-laser: #38bdf8;
+  --cyan-glow: rgba(56, 189, 248, 0.7);
+  --emerald-solve: #10b981;
+  --crimson-shake: #ef4444;
+
+  --wheel-size: clamp(230px, 65vw, 290px);
+  --cell-size: clamp(34px, 8.8vw, 50px);
+}
+
+/* ========================================================
+   1. MAIN GAME WRAPPER & NATURE BACKDROP
+======================================================== */
+.wow-game-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  background: linear-gradient(180deg, 
+    #071624 0%, 
+    #0f2e42 22%, 
+    #174862 48%, 
+    #255f7c 72%, 
+    #9c5844 94%, 
+    #cf7e5c 100%
+  );
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Montserrat, sans-serif;
+  color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none; /* Prevent browser pinch/scroll during wheel drag */
+}
+
+/* Atmospheric Mountain Silhouette Layer */
+.wow-backdrop-mountains {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48%;
+  pointer-events: none;
+  opacity: 0.22;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: cover;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 600' preserveAspectRatio='none'%3E%3Cpath fill='%23000000' fill-opacity='0.55' d='M0 600 L0 340 L160 220 L340 360 L520 180 L720 340 L900 160 L1080 320 L1200 240 L1200 600 Z'/%3E%3Cpath fill='%23000000' fill-opacity='0.8' d='M0 600 L0 420 L220 280 L440 440 L640 260 L860 420 L1040 290 L1200 400 L1200 600 Z'/%3E%3C/svg%3E");
+  z-index: 1;
+}
+
+/* Gentle ambient star twinkling in the twilight sky */
+.wow-backdrop-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: 
+    radial-gradient(1.5px 1.5px at 15% 15%, #fff, transparent),
+    radial-gradient(2px 2px at 45% 25%, #fff, transparent),
+    radial-gradient(1px 1px at 75% 10%, #fff, transparent),
+    radial-gradient(2px 2px at 85% 35%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 30% 45%, #fff, transparent),
+    radial-gradient(2px 2px at 60% 18%, #fde68a, transparent);
+  z-index: 1;
+}
+
+/* ========================================================
+   2. TOP STATUS HUD (Wonder & Level Header)
+======================================================== */
+.wow-hud {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 4px 14px;
+  min-height: 44px;
+}
+
+.wow-level-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.wow-level-wonder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.wow-wonder-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.wow-level-country {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Currency & Jar Stats */
+.wow-hud-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wow-stat-pill {
+  height: 32px;
+  padding: 0 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.wow-stat-pill.stars {
+  color: #fbbf24;
+}
+
+.wow-stat-pill.coins {
+  color: #fcd34d;
+}
+
+/* Bonus Jar Button */
+.wow-bonus-jar-btn {
+  position: relative;
+  height: 36px;
+  padding: 0 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.45));
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #fef3c7;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wow-bonus-jar-btn:active {
+  transform: scale(0.94);
+}
+
+.wow-bonus-jar-btn.jar-pulse {
+  animation: jarGoldPulse 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes jarGoldPulse {
+  0% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.4); }
+  100% { box-shadow: 0 0 18px rgba(245, 158, 11, 0.95); }
+}
+
+/* ========================================================
+   3. CROSSWORD MATRIX BOARD (Upper Section)
+======================================================== */
+.wow-board-area {
+  position: relative;
+  z-index: 5;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  min-height: 180px;
+  max-height: 48vh;
+  overflow: hidden;
+}
+
+.wow-crossword-grid {
+  display: grid;
+  gap: clamp(4px, 1.4vw, 7px);
+  justify-content: center;
+  align-content: center;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Crossword Cells */
+.wow-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-family: inherit;
+  font-size: clamp(1.2rem, 4vw, 1.55rem);
+  font-weight: 800;
+  user-select: none;
+  perspective: 600px;
+  transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+}
+
+/* Empty Cell (Not in puzzle) */
+.wow-cell.is-empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Active Unrevealed Slot */
+.wow-cell.is-slot {
+  background: var(--slot-bg);
+  border: 1.5px solid var(--slot-border);
+  box-shadow: var(--slot-shadow);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Revealed Letter Tile */
+.wow-cell.is-revealed {
+  background: linear-gradient(145deg, #ffffff, #f1f5f9);
+  color: var(--tile-text);
+  border: 1.5px solid #ffffff;
+  box-shadow: var(--tile-shadow);
+  transform: translateZ(0);
+}
+
+/* Target Mode Highlighting for Hammer Hint */
+.wow-cell.target-selectable {
+  cursor: pointer;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.25);
+  animation: hammerTargetPulse 1s infinite alternate ease-in-out;
+}
+
+@keyframes hammerTargetPulse {
+  0% { transform: scale(1); box-shadow: 0 0 6px #f59e0b; }
+  100% { transform: scale(1.08); box-shadow: 0 0 18px #f59e0b; }
+}
+
+/* Micro-Animations for Cells */
+.wow-cell.anim-flip {
+  animation: cellFlipReveal 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes cellFlipReveal {
+  0% {
+    transform: rotateY(90deg) scale(0.6);
+    opacity: 0;
+    background: #f59e0b;
+  }
+  50% {
+    transform: rotateY(0deg) scale(1.18);
+    background: #fef3c7;
+    box-shadow: 0 0 24px #f59e0b;
+  }
+  100% {
+    transform: rotateY(0deg) scale(1);
+    opacity: 1;
+    background: linear-gradient(145deg, #ffffff, #f1f5f9);
+  }
+}
+
+.wow-cell.anim-shake {
+  animation: cellShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes cellShake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(3px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.wow-cell.anim-celebrate {
+  animation: cellCelebrateGlow 0.8s ease-in-out forwards;
+}
+
+@keyframes cellCelebrateGlow {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); box-shadow: 0 0 20px #10b981; }
+  100% { transform: scale(1); }
+}
+
+/* ========================================================
+   4. WORD PREVIEW PILL (Floating Above Wheel)
+======================================================== */
+.wow-preview-wrapper {
+  position: relative;
+  z-index: 15;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 44px;
+  margin-bottom: 2px;
+}
+
+.wow-word-preview {
+  min-width: 140px;
+  max-width: 85%;
+  height: 42px;
+  padding: 0 20px;
+  background: rgba(10, 24, 38, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wow-word-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #ffffff;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Preview Pill States */
+.wow-word-preview.is-typing {
+  border-color: #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+}
+
+.wow-word-preview.is-success {
+  background: rgba(6, 78, 59, 0.95);
+  border-color: #10b981;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+  animation: previewSuccessPop 0.45s ease-out;
+}
+
+@keyframes previewSuccessPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.wow-word-preview.is-bonus {
+  background: rgba(120, 53, 15, 0.95);
+  border-color: #f59e0b;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.85);
+  animation: previewSuccessPop 0.45s ease-out;
+}
+
+.wow-word-preview.is-invalid {
+  background: rgba(127, 29, 29, 0.95);
+  border-color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+  animation: previewShake 0.4s ease-in-out;
+}
+
+@keyframes previewShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.wow-word-preview.is-already-found {
+  background: rgba(88, 28, 135, 0.95);
+  border-color: #a855f7;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.7);
+  animation: previewShake 0.4s ease-in-out;
+}
+
+/* ========================================================
+   5. LOWER CONTROL HUB: WHEEL & FLANKING TOOLS
+======================================================== */
+.wow-controls-area {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px max(14px, env(safe-area-inset-bottom, 14px)) 12px;
+  margin-bottom: 2px;
+}
+
+.wow-wheel-dock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 3vw, 20px);
+  width: 100%;
+  max-width: 440px;
+}
+
+/* Flanking Action Tool Columns */
+.wow-tools-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 20;
+}
+
+.wow-tool-btn {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(15, 34, 53, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.wow-tool-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.wow-tool-btn .tool-emoji {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+/* Tool Cost Badge */
+.tool-cost-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: #f59e0b;
+  color: #1a1a1a;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 8px;
+  border: 1px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Active Target/Hammer Mode for Tool */
+.wow-tool-btn.is-active-tool {
+  background: #f59e0b;
+  border-color: #ffffff;
+  box-shadow: 0 0 18px #f59e0b;
+  animation: toolPulse 1s infinite alternate;
+}
+
+@keyframes toolPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+/* ========================================================
+   6. THE TOUCH ANAGRAM WHEEL DISC & CANVAS
+======================================================== */
+.wow-wheel-disc {
+  position: relative;
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, 
+    rgba(255, 255, 255, 0.16) 0%, 
+    rgba(16, 36, 56, 0.8) 55%, 
+    rgba(7, 18, 30, 0.96) 100%
+  );
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.55), inset 0 2px 8px rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  touch-action: none;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Concentric Celestial Ring Details */
+.wow-wheel-disc::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+
+.wow-wheel-disc::after {
+  content: '';
+  position: absolute;
+  inset: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+/* Center Shuffle Trigger Button in Wheel Hub */
+.wow-wheel-center-shuffle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s;
+}
+
+.wow-wheel-center-shuffle:active {
+  transform: translate(-50%, -50%) scale(0.9) rotate(60deg);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.wow-wheel-center-shuffle.is-spinning {
+  animation: shuffleSpin 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes shuffleSpin {
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.15); }
+  100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+}
+
+/* Dynamic Trace Canvas (Overlay for Laser Path) */
+.wow-wheel-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Circular Letter Nodes */
+.wow-letter-node {
+  position: absolute;
+  width: clamp(48px, 13vw, 56px);
+  height: clamp(48px, 13vw, 56px);
+  margin-top: calc(-1 * clamp(48px, 13vw, 56px) / 2);
+  margin-left: calc(-1 * clamp(48px, 13vw, 56px) / 2);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffffff, #e2e8f0);
+  border: 2px solid #ffffff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.35rem, 4.2vw, 1.65rem);
+  font-weight: 800;
+  color: #1e293b;
+  cursor: pointer;
+  z-index: 8;
+  transform: scale(1);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s, box-shadow 0.15s;
+  touch-action: none;
+}
+
+/* Active / Selected Letter Node */
+.wow-letter-node.is-selected {
+  transform: scale(1.16);
+  background: linear-gradient(145deg, #e0f2fe, #bae6fd);
+  border-color: #38bdf8;
+  color: #0369a1;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.9), 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* ========================================================
+   7. BONUS JAR POPOVER / MODAL
+======================================================== */
+.wow-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 15, 26, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.wow-modal-overlay.is-active {
+  display: flex;
+}
+
+.wow-modal-card {
+  background: #0f2e42;
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  border-radius: 24px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wow-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wow-modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fef3c7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wow-modal-close-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.wow-bonus-words-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+
+.wow-bonus-tag {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fde68a;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================================
+   8. VICTORY CELEBRATION MODAL
+======================================================== */
+.wow-victory-card {
+  background: linear-gradient(165deg, #0f2e42, #081d2c);
+  border: 2px solid #f59e0b;
+  border-radius: 24px;
+  padding: 28px 22px;
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 158, 11, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.wow-victory-trophy {
+  font-size: 3.2rem;
+  animation: victoryBounce 1.5s infinite ease-in-out;
+}
+
+@keyframes victoryBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.wow-btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: #f59e0b;
+  color: #1a1a1a;
+  font-weight: 800;
+  font-size: 1.05rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  transition: transform 0.1s ease;
+}
+
+.wow-btn-primary:active {
+  transform: scale(0.97);
+}
+
+/* ========================================================
+   9. RESPONSIVE / ORIENTATION RULES
+======================================================== */
+/* Landscape Mode */
+@media (orientation: landscape) {
+  .wow-game-wrapper {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .wow-board-area {
+    flex: 1.1;
+    max-height: 100%;
+    padding: 10px 16px;
+  }
+
+  .wow-controls-area {
+    flex: 0.9;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    margin-bottom: 0;
+  }
+
+  .wow-wheel-disc {
+    --wheel-size: clamp(190px, 42vh, 230px);
+  }
+
+  .wow-preview-wrapper {
+    margin-bottom: 6px;
+  }
+
+  .wow-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 25;
+  }
+}
