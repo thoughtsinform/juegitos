@@ -1,0 +1,521 @@
+/* Juegitos - Main Global Styles */
+
+:root {
+  --felt-base: #0b4920;
+  --felt-dark: #03230d;
+  --felt-vignette: radial-gradient(ellipse at 50% 40%, #157338 0%, #0a461e 65%, #04230d 100%);
+  --text-white: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.7);
+  --accent-gold: #f59e0b;
+  --card-width: 82px;
+  --card-height: 118px;
+  --font-hud: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Montserrat, "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  background: var(--felt-dark);
+  font-family: var(--font-hud);
+  color: var(--text-white);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--felt-vignette);
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* ========================================================
+   1. LOGIN SCREEN MODAL
+======================================================== */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 35, 13, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.login-card {
+  background: #0f3d1f;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 380px;
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.login-logo {
+  font-size: 3.2rem;
+  margin-bottom: 8px;
+  display: inline-block;
+  animation: floatBounce 2.5s infinite ease-in-out;
+}
+
+@keyframes floatBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.login-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.login-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+.login-quick-select {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.player-select-btn {
+  flex: 1;
+  padding: 12px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.player-select-btn.selected {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.18);
+  transform: translateY(-2px);
+}
+
+.player-select-btn span.emoji {
+  font-size: 1.8rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.login-field label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.login-field input {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1.05rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.login-field input:focus {
+  border-color: #34d399;
+}
+
+.login-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  min-height: 20px;
+  text-align: center;
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  transition: transform 0.1s, opacity 0.2s;
+}
+
+.login-submit-btn:active {
+  transform: scale(0.98);
+}
+
+/* ========================================================
+   2. SPIDER SOLITAIRE BOARD & HUD
+======================================================== */
+.spider-game-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* HUD Header: MOVES / TIME / SCORE */
+.spider-hud {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+.hud-label {
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 2px;
+}
+
+.hud-val {
+  font-size: 1.45rem;
+  font-weight: 300;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Upper Board: Foundation & Stock */
+.spider-upper-board {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  min-height: 85px;
+}
+
+.foundation-area {
+  position: relative;
+  width: var(--card-width);
+  height: var(--card-height);
+}
+
+.stock-area {
+  position: relative;
+  width: calc(var(--card-width) + 40px);
+  height: var(--card-height);
+  cursor: pointer;
+}
+
+/* Tableau: 10 Columns */
+.spider-tableau {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+  padding: 6px 10px 70px 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tableau-column {
+  position: relative;
+  min-height: 350px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.tableau-column.empty-col-warning {
+  background: rgba(239, 68, 68, 0.2);
+  outline: 2px dashed rgba(239, 68, 68, 0.6);
+}
+
+.tableau-column.hint-dest-glow {
+  background: rgba(245, 158, 11, 0.25);
+  outline: 2px solid #f59e0b;
+}
+
+/* ========================================================
+   3. BOTTOM CHEVRON & DRAWER
+======================================================== */
+.bottom-drawer-wrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(calc(100% - 38px));
+}
+
+.bottom-drawer-wrapper.is-open {
+  transform: translateY(0);
+}
+
+.drawer-chevron-btn {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  color: #fff;
+  padding: 4px 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: transform 0.3s;
+}
+
+.bottom-drawer-wrapper.is-open .drawer-chevron-btn svg {
+  transform: rotate(180deg);
+}
+
+.drawer-content {
+  width: 100%;
+  background: #0d381c;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.drawer-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.drawer-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 12px 6px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.drawer-action-btn:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.drawer-action-btn .btn-icon {
+  font-size: 1.4rem;
+}
+
+.drawer-section-title {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.difficulty-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.diff-pill {
+  flex: 1;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.diff-pill.active {
+  background: #f59e0b;
+  color: #1e1e1e;
+  border-color: #f59e0b;
+}
+
+.drawer-footer-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+
+.player-info-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.drawer-footer-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.drawer-link-btn {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ========================================================
+   4. VICTORY MODAL
+======================================================== */
+.victory-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9990;
+  padding: 20px;
+}
+
+.victory-modal.is-active {
+  display: flex;
+}
+
+.victory-card {
+  background: #0f3d1f;
+  border: 2px solid #f59e0b;
+  border-radius: 24px;
+  padding: 32px 24px;
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+}
+
+.victory-trophy {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.victory-stats {
+  margin: 20px 0;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-around;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: #f59e0b;
+  color: #1e1e1e;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+/* ========================================================
+   5. RESPONSIVE / ORIENTATION RULES
+======================================================== */
+/* Landscape (Mom's primary walking mode!) */
+@media (orientation: landscape) {
+  :root {
+    --card-width: 72px;
+    --card-height: 102px;
+  }
+
+  .spider-hud {
+    padding: 4px 24px;
+  }
+
+  .hud-val {
+    font-size: 1.25rem;
+  }
+
+  .spider-upper-board {
+    padding: 4px 20px;
+    min-height: 70px;
+  }
+
+  .spider-tableau {
+    gap: 10px;
+    padding: 4px 16px 50px 16px;
+  }
+}
+
+/* Portrait */
+@media (orientation: portrait) {
+  :root {
+    --card-width: clamp(30px, 9vw, 42px);
+    --card-height: clamp(45px, 13.5vw, 62px);
+  }
+
+  .spider-tableau {
+    gap: 3px;
+    padding: 6px 4px 60px 4px;
+  }
+}

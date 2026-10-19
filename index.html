@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Juegitos - Mobile Arcade</title>
+  <meta name="description" content="Custom ad-free mobile arcade for Ellen & Susan with integrated walking step counter.">
+  <meta name="theme-color" content="#04230d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Juegitos">
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/cards.css">
+  <link rel="stylesheet" href="styles/step-counter.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 1. The Step Counter Banner (Directly in place of the Ad slot!) -->
+    <header id="stepBannerContainer"></header>
+
+    <!-- 2. The Main Game Area (Spider Solitaire) -->
+    <main id="gameContainer"></main>
+
+    <!-- 3. Login Modal (Persistent Session for Susan & Ellen) -->
+    <div class="login-overlay" id="loginModal" style="display: none;">
+      <div class="login-card">
+        <span class="login-logo">🕹️</span>
+        <h1 class="login-title">Juegitos</h1>
+        <p class="login-subtitle">Ellen & Susan's Custom Mobile Arcade</p>
+
+        <!-- Quick 1-Tap Player Selector -->
+        <div class="login-quick-select">
+          <button type="button" class="player-select-btn" id="selectSusanBtn">
+            <span class="emoji">🌸</span>
+            <span>Susan</span>
+          </button>
+          <button type="button" class="player-select-btn selected" id="selectEllenBtn">
+            <span class="emoji">🌻</span>
+            <span>Ellen</span>
+          </button>
+        </div>
+
+        <form class="login-form" onsubmit="return false;">
+          <div class="login-field">
+            <label for="loginUsername">Player Name</label>
+            <input type="text" id="loginUsername" value="Ellen" autocomplete="username" autocapitalize="words" required>
+          </div>
+
+          <div class="login-field">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter password..." autocomplete="current-password" required>
+          </div>
+
+          <div class="login-error" id="loginError"></div>
+
+          <button type="submit" class="login-submit-btn" id="loginSubmitBtn">Start Playing</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
