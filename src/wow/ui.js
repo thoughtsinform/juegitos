@@ -432,7 +432,7 @@ export class WowUI {
       }
 
       if (res.isLevelComplete) {
-        setTimeout(() => this.showVictoryModal(), 650);
+        setTimeout(() => { if (!this.destroyed) this.showVictoryModal(); }, 650);
       }
     };
 
@@ -478,7 +478,7 @@ export class WowUI {
       }
 
       if (res.isLevelComplete) {
-        setTimeout(() => this.showVictoryModal(), 650);
+        setTimeout(() => { if (!this.destroyed) this.showVictoryModal(); }, 650);
       }
     });
 
