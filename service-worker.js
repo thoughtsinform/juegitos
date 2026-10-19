@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jueguitos-v8-safari-fix';
+const CACHE_NAME = 'jueguitos-v9-icons-fix';
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",

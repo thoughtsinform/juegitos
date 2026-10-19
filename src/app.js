@@ -72,7 +72,20 @@ class App {
     if (user) {
       this.currentUser = user;
       this.hideLogin();
-      this.launchArcade();
+      try {
+        this.launchArcade();
+      } catch (err) {
+        try {
+          Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('jueguitos_session_v1_')) localStorage.removeItem(k);
+          });
+        } catch (e) {}
+        try {
+          this.launchArcade();
+        } catch (retryErr) {
+          this.showLogin();
+        }
+      }
     } else {
       this.showLogin();
     }

@@ -425,5 +425,25 @@ export const Icons = {
       <polygon points="6 3 18 3 22 9 12 21 2 9 6 3" fill="#fb7185" stroke="#be123c"></polygon>
       <polygon points="7 5 17 5 19 9 12 18 5 9 7 5" fill="rgba(255,255,255,0.28)" stroke="none"></polygon>
     </svg>
+  `,
+
+  // Menu / Settings Gear & Sliders Icon
+  settings: (cls = '', size = 18) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="4" y1="6" x2="20" y2="6"></line>
+      <line x1="4" y1="12" x2="20" y2="12"></line>
+      <line x1="4" y1="18" x2="20" y2="18"></line>
+      <circle cx="8" cy="6" r="2" fill="currentColor"></circle>
+      <circle cx="16" cy="12" r="2" fill="currentColor"></circle>
+      <circle cx="10" cy="18" r="2" fill="currentColor"></circle>
+    </svg>
+  `,
+
+  menu: (cls = '', size = 18) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="4" y1="6" x2="20" y2="6"></line>
+      <line x1="4" y1="12" x2="20" y2="12"></line>
+      <line x1="4" y1="18" x2="20" y2="18"></line>
+    </svg>
   `
 };
