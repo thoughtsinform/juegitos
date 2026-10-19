@@ -90,7 +90,2338 @@ Object.assign(WONDER_LANDMARKS, {
 });
 
 // Connected crosswords with matching intersections and space between parallel words.
-export const WOW_LEVELS = [
+// 3-Tier Difficulty World Wonder Levels (Easy: 4-5 letters, Medium: 6-7 letters, Hard: 7-8 letters)
+export const WOW_LEVELS_EASY = [
+  {
+    "id": 1,
+    "wonder": "Great Pyramid of Giza",
+    "country": "Egypt",
+    "letters": [
+      "C",
+      "A",
+      "S",
+      "T"
+    ],
+    "rows": 5,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 2
+    },
+    "words": [
+      {
+        "word": "CAST",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "ACT",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "SAT",
+        "row": 0,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "CATS",
+        "row": 1,
+        "col": 1,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "wonder": "The Colosseum",
+    "country": "Italy",
+    "letters": [
+      "S",
+      "T",
+      "A",
+      "R"
+    ],
+    "rows": 4,
+    "cols": 6,
+    "butterfly": {
+      "r": 1,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "STAR",
+        "row": 3,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "SAT",
+        "row": 1,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "ARTS",
+        "row": 1,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RATS",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "wonder": "Taj Mahal",
+    "country": "India",
+    "letters": [
+      "S",
+      "A",
+      "N",
+      "D",
+      "L"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 3
+    },
+    "words": [
+      {
+        "word": "LANDS",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "AND",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "LAD",
+        "row": 0,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "SAD",
+        "row": 1,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "SAND",
+        "row": 2,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "wonder": "Machu Picchu",
+    "country": "Peru",
+    "letters": [
+      "S",
+      "T",
+      "O",
+      "N",
+      "E"
+    ],
+    "rows": 5,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 2
+    },
+    "words": [
+      {
+        "word": "STONE",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "NET",
+        "row": 0,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "NOTE",
+        "row": 0,
+        "col": 1,
+        "dir": "H"
+      },
+      {
+        "word": "TONE",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "SON",
+        "row": 2,
+        "col": 0,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "wonder": "Petra Treasury",
+    "country": "Jordan",
+    "letters": [
+      "W",
+      "A",
+      "T",
+      "E",
+      "R"
+    ],
+    "rows": 6,
+    "cols": 7,
+    "butterfly": {
+      "r": 0,
+      "c": 1
+    },
+    "words": [
+      {
+        "word": "WATER",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RAT",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "WAR",
+        "row": 0,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RATE",
+        "row": 2,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "TEAR",
+        "row": 5,
+        "col": 3,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "wonder": "Chichen Itza",
+    "country": "Mexico",
+    "letters": [
+      "P",
+      "L",
+      "A",
+      "N",
+      "E",
+      "T"
+    ],
+    "rows": 6,
+    "cols": 6,
+    "butterfly": {
+      "r": 3,
+      "c": 3
+    },
+    "words": [
+      {
+        "word": "PLANET",
+        "row": 5,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "LATE",
+        "row": 2,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "NEAT",
+        "row": 3,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "PLAN",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "TALE",
+        "row": 1,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "wonder": "Amber Palace",
+    "country": "India",
+    "letters": [
+      "C",
+      "R",
+      "O",
+      "W",
+      "N",
+      "S"
+    ],
+    "rows": 6,
+    "cols": 6,
+    "butterfly": {
+      "r": 3,
+      "c": 3
+    },
+    "words": [
+      {
+        "word": "CROWNS",
+        "row": 5,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "ROW",
+        "row": 3,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "CROW",
+        "row": 3,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "SNOW",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "WORN",
+        "row": 1,
+        "col": 2,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "wonder": "Great Wall of China",
+    "country": "China",
+    "letters": [
+      "G",
+      "A",
+      "R",
+      "D",
+      "E",
+      "N"
+    ],
+    "rows": 6,
+    "cols": 6,
+    "butterfly": {
+      "r": 0,
+      "c": 3
+    },
+    "words": [
+      {
+        "word": "GARDEN",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "AGE",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "GEAR",
+        "row": 0,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "NEAR",
+        "row": 2,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "READ",
+        "row": 2,
+        "col": 2,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "wonder": "Angkor Wat",
+    "country": "Cambodia",
+    "letters": [
+      "B",
+      "R",
+      "E",
+      "A",
+      "D"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 5,
+      "c": 1
+    },
+    "words": [
+      {
+        "word": "BREAD",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "READ",
+        "row": 2,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "BEAR",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "DEAR",
+        "row": 5,
+        "col": 1,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "wonder": "Santorini Caldera",
+    "country": "Greece",
+    "letters": [
+      "L",
+      "I",
+      "G",
+      "H",
+      "T"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "LIGHT",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "GILT",
+        "row": 2,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "HILT",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "LIT",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "wonder": "Neuschwanstein Castle",
+    "country": "Germany",
+    "letters": [
+      "T",
+      "R",
+      "A",
+      "I",
+      "N"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "TRAIN",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RAIN",
+        "row": 2,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "RANT",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "ART",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "wonder": "Alhambra Palace",
+    "country": "Spain",
+    "letters": [
+      "C",
+      "L",
+      "O",
+      "U",
+      "D"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "CLOUD",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "COLD",
+        "row": 2,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "LOUD",
+        "row": 1,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "OLD",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "wonder": "Mount Fuji",
+    "country": "Japan",
+    "letters": [
+      "H",
+      "E",
+      "A",
+      "R",
+      "T"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "HEART",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "HEAR",
+        "row": 2,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "HEAT",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "RATE",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "wonder": "Hagia Sophia",
+    "country": "Turkey",
+    "letters": [
+      "S",
+      "T",
+      "O",
+      "N",
+      "E"
+    ],
+    "rows": 7,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "STONE",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "TONE",
+        "row": 3,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "NOTE",
+        "row": 3,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "NOSE",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "wonder": "Mont Saint-Michel",
+    "country": "France",
+    "letters": [
+      "P",
+      "L",
+      "A",
+      "N",
+      "T"
+    ],
+    "rows": 5,
+    "cols": 5,
+    "butterfly": {
+      "r": 1,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "PLANT",
+        "row": 1,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "PLAN",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "PANT",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "TAP",
+        "row": 1,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "wonder": "Acropolis of Athens",
+    "country": "Greece",
+    "letters": [
+      "C",
+      "R",
+      "O",
+      "W",
+      "N"
+    ],
+    "rows": 4,
+    "cols": 6,
+    "butterfly": {
+      "r": 2,
+      "c": 2
+    },
+    "words": [
+      {
+        "word": "CROWN",
+        "row": 0,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "CORN",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "WORN",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "CROW",
+        "row": 2,
+        "col": 2,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "wonder": "Serengeti Plains",
+    "country": "Tanzania",
+    "letters": [
+      "S",
+      "H",
+      "O",
+      "R",
+      "E"
+    ],
+    "rows": 7,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 2
+    },
+    "words": [
+      {
+        "word": "SHORE",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "ROSE",
+        "row": 3,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "SHOE",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "HERO",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "wonder": "Banff Mountain Lakes",
+    "country": "Canada",
+    "letters": [
+      "F",
+      "L",
+      "A",
+      "M",
+      "E"
+    ],
+    "rows": 5,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "FLAME",
+        "row": 1,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "FAME",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "LAME",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "MEAL",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "wonder": "Golden Pavilion Kyoto",
+    "country": "Japan",
+    "letters": [
+      "B",
+      "R",
+      "U",
+      "S",
+      "H"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "BRUSH",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RUSH",
+        "row": 2,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "BUSH",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "RUB",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "wonder": "Grand Canyon Vista",
+    "country": "United States",
+    "letters": [
+      "P",
+      "E",
+      "A",
+      "R",
+      "L"
+    ],
+    "rows": 7,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 1
+    },
+    "words": [
+      {
+        "word": "PEARL",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "PEAR",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "REAL",
+        "row": 3,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "PALE",
+        "row": 0,
+        "col": 1,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "wonder": "Venetian Grand Canal",
+    "country": "Italy",
+    "letters": [
+      "D",
+      "R",
+      "E",
+      "A",
+      "M"
+    ],
+    "rows": 5,
+    "cols": 5,
+    "butterfly": {
+      "r": 1,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "DREAM",
+        "row": 1,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "DEAR",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "READ",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "MARE",
+        "row": 1,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "wonder": "Sultan Ahmed Mosque",
+    "country": "Turkey",
+    "letters": [
+      "C",
+      "H",
+      "A",
+      "I",
+      "R"
+    ],
+    "rows": 5,
+    "cols": 7,
+    "butterfly": {
+      "r": 4,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "CHAIR",
+        "row": 1,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "HAIR",
+        "row": 1,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "ARCH",
+        "row": 0,
+        "col": 6,
+        "dir": "V"
+      },
+      {
+        "word": "CHAR",
+        "row": 4,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "wonder": "Cliffs of Moher",
+    "country": "Ireland",
+    "letters": [
+      "M",
+      "U",
+      "S",
+      "I",
+      "C"
+    ],
+    "rows": 6,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "MUSIC",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "SCUM",
+        "row": 2,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "SUM",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "SIC",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "wonder": "Forbidden Imperial City",
+    "country": "China",
+    "letters": [
+      "F",
+      "R",
+      "O",
+      "S",
+      "T"
+    ],
+    "rows": 7,
+    "cols": 5,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "FROST",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "FORT",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "SORT",
+        "row": 3,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "SOFT",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  }
+];
+
+export const WOW_LEVELS_MEDIUM = [
+  {
+    "id": 1,
+    "wonder": "Great Pyramid of Giza",
+    "country": "Egypt",
+    "letters": [
+      "C",
+      "A",
+      "S",
+      "T",
+      "L",
+      "E"
+    ],
+    "rows": 7,
+    "cols": 6,
+    "butterfly": {
+      "r": 3,
+      "c": 2
+    },
+    "words": [
+      {
+        "word": "CASTLE",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "CAST",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "LATE",
+        "row": 3,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "TALE",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "SALE",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "wonder": "The Colosseum",
+    "country": "Italy",
+    "letters": [
+      "S",
+      "T",
+      "R",
+      "E",
+      "A",
+      "M"
+    ],
+    "rows": 6,
+    "cols": 8,
+    "butterfly": {
+      "r": 4,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "STREAM",
+        "row": 1,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "STEAM",
+        "row": 1,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "SMART",
+        "row": 0,
+        "col": 7,
+        "dir": "V"
+      },
+      {
+        "word": "TEAM",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "STAR",
+        "row": 4,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "wonder": "Taj Mahal",
+    "country": "India",
+    "letters": [
+      "G",
+      "A",
+      "R",
+      "D",
+      "E",
+      "N"
+    ],
+    "rows": 6,
+    "cols": 8,
+    "butterfly": {
+      "r": 3,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "GARDEN",
+        "row": 1,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "GRADE",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "GRAND",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "READ",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "DEAN",
+        "row": 3,
+        "col": 4,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "wonder": "Machu Picchu",
+    "country": "Peru",
+    "letters": [
+      "P",
+      "L",
+      "A",
+      "N",
+      "E",
+      "T"
+    ],
+    "rows": 7,
+    "cols": 9,
+    "butterfly": {
+      "r": 5,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "PLANET",
+        "row": 2,
+        "col": 3,
+        "dir": "H"
+      },
+      {
+        "word": "PLANT",
+        "row": 2,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "PLATE",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "LATE",
+        "row": 0,
+        "col": 8,
+        "dir": "V"
+      },
+      {
+        "word": "LEAN",
+        "row": 5,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "wonder": "Petra Treasury",
+    "country": "Jordan",
+    "letters": [
+      "S",
+      "I",
+      "L",
+      "V",
+      "E",
+      "R"
+    ],
+    "rows": 8,
+    "cols": 6,
+    "butterfly": {
+      "r": 6,
+      "c": 1
+    },
+    "words": [
+      {
+        "word": "SILVER",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "LIVER",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "LIVES",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "RISE",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "VEIL",
+        "row": 6,
+        "col": 1,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "wonder": "Chichen Itza",
+    "country": "Mexico",
+    "letters": [
+      "B",
+      "R",
+      "I",
+      "D",
+      "G",
+      "E"
+    ],
+    "rows": 8,
+    "cols": 9,
+    "butterfly": {
+      "r": 6,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "BRIDGE",
+        "row": 3,
+        "col": 3,
+        "dir": "H"
+      },
+      {
+        "word": "BRIDE",
+        "row": 3,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "RIDGE",
+        "row": 2,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "RIDE",
+        "row": 0,
+        "col": 8,
+        "dir": "V"
+      },
+      {
+        "word": "BIRD",
+        "row": 6,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "wonder": "Amber Palace",
+    "country": "India",
+    "letters": [
+      "F",
+      "O",
+      "R",
+      "E",
+      "S",
+      "T"
+    ],
+    "rows": 8,
+    "cols": 6,
+    "butterfly": {
+      "r": 0,
+      "c": 5
+    },
+    "words": [
+      {
+        "word": "FOREST",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "FORTE",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "FROST",
+        "row": 2,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "STORE",
+        "row": 3,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "FORT",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "wonder": "Great Wall of China",
+    "country": "China",
+    "letters": [
+      "S",
+      "P",
+      "R",
+      "I",
+      "N",
+      "G"
+    ],
+    "rows": 5,
+    "cols": 9,
+    "butterfly": {
+      "r": 1,
+      "c": 5
+    },
+    "words": [
+      {
+        "word": "SPRING",
+        "row": 0,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RINGS",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "GRINS",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "SPIN",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "RING",
+        "row": 1,
+        "col": 5,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "wonder": "Angkor Wat",
+    "country": "Cambodia",
+    "letters": [
+      "C",
+      "A",
+      "N",
+      "D",
+      "L",
+      "E"
+    ],
+    "rows": 9,
+    "cols": 8,
+    "butterfly": {
+      "r": 8,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "CANDLE",
+        "row": 4,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "CLEAN",
+        "row": 4,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "DANCE",
+        "row": 4,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "LANCE",
+        "row": 0,
+        "col": 7,
+        "dir": "V"
+      },
+      {
+        "word": "LAND",
+        "row": 8,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "wonder": "Santorini Caldera",
+    "country": "Greece",
+    "letters": [
+      "W",
+      "I",
+      "N",
+      "T",
+      "E",
+      "R"
+    ],
+    "rows": 7,
+    "cols": 9,
+    "butterfly": {
+      "r": 5,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "WINTER",
+        "row": 2,
+        "col": 3,
+        "dir": "H"
+      },
+      {
+        "word": "WRITE",
+        "row": 2,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "TWINE",
+        "row": 2,
+        "col": 6,
+        "dir": "V"
+      },
+      {
+        "word": "WIRE",
+        "row": 0,
+        "col": 8,
+        "dir": "V"
+      },
+      {
+        "word": "RENT",
+        "row": 5,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "wonder": "Neuschwanstein Castle",
+    "country": "Germany",
+    "letters": [
+      "I",
+      "S",
+      "L",
+      "A",
+      "N",
+      "D"
+    ],
+    "rows": 7,
+    "cols": 7,
+    "butterfly": {
+      "r": 0,
+      "c": 1
+    },
+    "words": [
+      {
+        "word": "ISLAND",
+        "row": 2,
+        "col": 1,
+        "dir": "H"
+      },
+      {
+        "word": "LANDS",
+        "row": 2,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "SNAIL",
+        "row": 1,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "SAND",
+        "row": 5,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "SAIL",
+        "row": 0,
+        "col": 1,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "wonder": "Alhambra Palace",
+    "country": "Spain",
+    "letters": [
+      "G",
+      "O",
+      "L",
+      "D",
+      "E",
+      "N"
+    ],
+    "rows": 8,
+    "cols": 8,
+    "butterfly": {
+      "r": 1,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "GOLDEN",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "LODGE",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "OLDEN",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "GOLD",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "LONE",
+        "row": 1,
+        "col": 4,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "wonder": "Mount Fuji",
+    "country": "Japan",
+    "letters": [
+      "F",
+      "L",
+      "O",
+      "W",
+      "E",
+      "R"
+    ],
+    "rows": 8,
+    "cols": 6,
+    "butterfly": {
+      "r": 1,
+      "c": 5
+    },
+    "words": [
+      {
+        "word": "FLOWER",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "LOWER",
+        "row": 3,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "FLOW",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "WOLF",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "LORE",
+        "row": 1,
+        "col": 5,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "wonder": "Hagia Sophia",
+    "country": "Turkey",
+    "letters": [
+      "M",
+      "A",
+      "R",
+      "K",
+      "E",
+      "T"
+    ],
+    "rows": 8,
+    "cols": 7,
+    "butterfly": {
+      "r": 0,
+      "c": 5
+    },
+    "words": [
+      {
+        "word": "MARKET",
+        "row": 3,
+        "col": 1,
+        "dir": "H"
+      },
+      {
+        "word": "MAKER",
+        "row": 3,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "TAKE",
+        "row": 3,
+        "col": 6,
+        "dir": "V"
+      },
+      {
+        "word": "TEAM",
+        "row": 6,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "RATE",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "wonder": "Mont Saint-Michel",
+    "country": "France",
+    "letters": [
+      "B",
+      "A",
+      "S",
+      "K",
+      "E",
+      "T"
+    ],
+    "rows": 8,
+    "cols": 6,
+    "butterfly": {
+      "r": 7,
+      "c": 2
+    },
+    "words": [
+      {
+        "word": "BASKET",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "STAKE",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "SKATE",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "BAKE",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "EAST",
+        "row": 7,
+        "col": 2,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "wonder": "Acropolis of Athens",
+    "country": "Greece",
+    "letters": [
+      "T",
+      "R",
+      "A",
+      "V",
+      "E",
+      "L"
+    ],
+    "rows": 8,
+    "cols": 6,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "TRAVEL",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "LATER",
+        "row": 3,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "ALERT",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "RATE",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "TALE",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 17,
+    "wonder": "Serengeti Plains",
+    "country": "Tanzania",
+    "letters": [
+      "T",
+      "E",
+      "M",
+      "P",
+      "L",
+      "E"
+    ],
+    "rows": 5,
+    "cols": 8,
+    "butterfly": {
+      "r": 3,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "TEMPLE",
+        "row": 1,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "PELT",
+        "row": 1,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "MEET",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "PEEL",
+        "row": 0,
+        "col": 7,
+        "dir": "V"
+      },
+      {
+        "word": "MELT",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "wonder": "Banff Mountain Lakes",
+    "country": "Canada",
+    "letters": [
+      "H",
+      "A",
+      "R",
+      "V",
+      "E",
+      "S",
+      "T"
+    ],
+    "rows": 9,
+    "cols": 10,
+    "butterfly": {
+      "r": 8,
+      "c": 5
+    },
+    "words": [
+      {
+        "word": "HARVEST",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "STARVE",
+        "row": 3,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "HEART",
+        "row": 3,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "SHARE",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "EARTH",
+        "row": 8,
+        "col": 5,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 19,
+    "wonder": "Golden Pavilion Kyoto",
+    "country": "Japan",
+    "letters": [
+      "L",
+      "A",
+      "N",
+      "T",
+      "E",
+      "R",
+      "N"
+    ],
+    "rows": 8,
+    "cols": 9,
+    "butterfly": {
+      "r": 7,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "LANTERN",
+        "row": 3,
+        "col": 2,
+        "dir": "H"
+      },
+      {
+        "word": "LEARN",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "LATER",
+        "row": 1,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "ALERT",
+        "row": 0,
+        "col": 7,
+        "dir": "V"
+      },
+      {
+        "word": "RENT",
+        "row": 7,
+        "col": 0,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "wonder": "Grand Canyon Vista",
+    "country": "United States",
+    "letters": [
+      "O",
+      "R",
+      "C",
+      "H",
+      "A",
+      "R",
+      "D"
+    ],
+    "rows": 7,
+    "cols": 8,
+    "butterfly": {
+      "r": 0,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "ORCHARD",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "ROACH",
+        "row": 2,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "CHORD",
+        "row": 1,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "HARD",
+        "row": 0,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "CHAR",
+        "row": 0,
+        "col": 4,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 21,
+    "wonder": "Venetian Grand Canal",
+    "country": "Italy",
+    "letters": [
+      "C",
+      "A",
+      "P",
+      "T",
+      "A",
+      "I",
+      "N"
+    ],
+    "rows": 8,
+    "cols": 7,
+    "butterfly": {
+      "r": 1,
+      "c": 0
+    },
+    "words": [
+      {
+        "word": "CAPTAIN",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "PAINT",
+        "row": 3,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "PANT",
+        "row": 2,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "PAIN",
+        "row": 0,
+        "col": 6,
+        "dir": "V"
+      },
+      {
+        "word": "PACT",
+        "row": 1,
+        "col": 0,
+        "dir": "V"
+      }
+    ]
+  },
+  {
+    "id": 22,
+    "wonder": "Sultan Ahmed Mosque",
+    "country": "Turkey",
+    "letters": [
+      "C",
+      "O",
+      "M",
+      "P",
+      "A",
+      "S",
+      "S"
+    ],
+    "rows": 8,
+    "cols": 8,
+    "butterfly": {
+      "r": 5,
+      "c": 4
+    },
+    "words": [
+      {
+        "word": "COMPASS",
+        "row": 3,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "SCAMP",
+        "row": 3,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "SOAPS",
+        "row": 2,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "CAMPS",
+        "row": 0,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "CAMP",
+        "row": 5,
+        "col": 4,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 23,
+    "wonder": "Cliffs of Moher",
+    "country": "Ireland",
+    "letters": [
+      "C",
+      "R",
+      "Y",
+      "S",
+      "T",
+      "A",
+      "L"
+    ],
+    "rows": 7,
+    "cols": 7,
+    "butterfly": {
+      "r": 0,
+      "c": 1
+    },
+    "words": [
+      {
+        "word": "CRYSTAL",
+        "row": 2,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "SALTY",
+        "row": 2,
+        "col": 3,
+        "dir": "V"
+      },
+      {
+        "word": "STRAY",
+        "row": 0,
+        "col": 1,
+        "dir": "V"
+      },
+      {
+        "word": "CARTS",
+        "row": 1,
+        "col": 5,
+        "dir": "V"
+      },
+      {
+        "word": "STAR",
+        "row": 0,
+        "col": 1,
+        "dir": "H"
+      }
+    ]
+  },
+  {
+    "id": 24,
+    "wonder": "Forbidden Imperial City",
+    "country": "China",
+    "letters": [
+      "M",
+      "O",
+      "R",
+      "N",
+      "I",
+      "N",
+      "G"
+    ],
+    "rows": 5,
+    "cols": 7,
+    "butterfly": {
+      "r": 0,
+      "c": 6
+    },
+    "words": [
+      {
+        "word": "MORNING",
+        "row": 0,
+        "col": 0,
+        "dir": "H"
+      },
+      {
+        "word": "MINOR",
+        "row": 0,
+        "col": 0,
+        "dir": "V"
+      },
+      {
+        "word": "RING",
+        "row": 0,
+        "col": 2,
+        "dir": "V"
+      },
+      {
+        "word": "IRON",
+        "row": 0,
+        "col": 4,
+        "dir": "V"
+      },
+      {
+        "word": "GRIN",
+        "row": 0,
+        "col": 6,
+        "dir": "V"
+      }
+    ]
+  }
+];
+
+export const WOW_LEVELS_HARD = [
   {
     "id": 1,
     "wonder": "Great Pyramid of Giza",
@@ -1624,3 +3955,11 @@ export const WOW_LEVELS = [
     ]
   }
 ];
+
+export const WOW_DIFFICULTIES = {
+  easy: { id: "easy", label: "Easy", subtitle: "4-5 Letters", levels: WOW_LEVELS_EASY },
+  medium: { id: "medium", label: "Medium", subtitle: "6-7 Letters", levels: WOW_LEVELS_MEDIUM },
+  hard: { id: "hard", label: "Hard", subtitle: "7-8 Letters", levels: WOW_LEVELS_HARD }
+};
+
+export const WOW_LEVELS = WOW_LEVELS_EASY;

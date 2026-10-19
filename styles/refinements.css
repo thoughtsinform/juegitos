@@ -1,12 +1,72 @@
-/* Shared second-pass polish & Unified Arcade Menu Modal. */
+/* ========================================================
+   Jueguitos - Top-10 App Store Display, Layout & Menu Polish
+   Eliminates horizontal overflow across all grids/modals,
+   adds the 3-tier Words of Wonders Difficulty Bar, and
+   optimizes viewport proportions for iOS Safari & Chrome.
+======================================================== */
+
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 3px solid #fff4be; outline-offset: 3px; }
 button:disabled { opacity: .5; cursor: default; }
 
+/* Lock viewport dimensions to dynamic viewport height (100dvh) and prevent horizontal overflow */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#app {
+  width: 100%;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* Zero-clutter top container: Menu lives in an overlay modal, not a persistent top bar */
 #arcadeNavContainer {
   display: contents;
+}
+
+/* Prevent horizontal scrolling in ALL modals, sheets, and drawers */
+.arcade-menu-sheet,
+.login-card,
+.drawer-content,
+.wow-modal-card,
+.wow-info-card,
+.wow-victory-card,
+.tb-modal-card,
+.tb-guide-scroll,
+.mm-modal-card,
+.mm-guide-scroll,
+.room-hotspots {
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+
+/* Enforce minmax(0, 1fr) on all multi-column CSS Grids so long labels never cause side-scroll */
+.arcade-game-grid,
+.wow-levels-MiniGrid,
+.room-hotspots {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.login-quick-select {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.drawer-quick-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.spider-tableau {
+  grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
 }
 
 /* In-Game Menu Trigger Buttons */
@@ -14,47 +74,50 @@ button:disabled { opacity: .5; cursor: default; }
 .wow-menu-pill-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   height: 32px;
   padding: 0 11px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1.5px solid rgba(253, 230, 138, 0.45);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border: 1.5px solid rgba(253, 230, 138, 0.48);
   color: #fef3c7;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .hud-menu-btn:active,
 .wow-menu-pill-btn:active {
   transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .mm-mode-btn.mm-menu-trigger {
   flex: 0 0 auto;
-  padding: 7px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(253, 230, 138, 0.35);
+  padding: 6px 11px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(253, 230, 138, 0.38);
 }
 
 /* ========================================================
-   UNIFIED ARCADE MENU MODAL
+   UNIFIED ARCADE MENU MODAL (Zero Horizontal Scroll)
 ======================================================== */
 .arcade-menu-overlay {
   position: fixed;
   inset: 0;
   z-index: 12000;
-  background: rgba(6, 14, 24, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(5, 12, 22, 0.84);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 14px;
 }
 
 .arcade-menu-overlay.is-open {
@@ -63,18 +126,21 @@ button:disabled { opacity: .5; cursor: default; }
 
 .arcade-menu-sheet {
   width: 100%;
-  max-width: 400px;
-  max-height: 90dvh;
+  max-width: 392px;
+  max-height: min(90dvh, 680px);
   overflow-y: auto;
-  background: linear-gradient(165deg, #132a3e 0%, #091522 100%);
-  border: 2px solid rgba(251, 191, 36, 0.55);
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(165deg, #152e44 0%, #091522 100%);
+  border: 2px solid rgba(251, 191, 36, 0.58);
   border-radius: 24px;
-  padding: 20px 18px;
+  padding: 18px 16px;
   color: #f8fafc;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .arcade-menu-header {
@@ -87,14 +153,16 @@ button:disabled { opacity: .5; cursor: default; }
 .arcade-menu-title-wrap {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .arcade-menu-title {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 900;
   color: #fef3c7;
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .arcade-autosave-badge {
@@ -111,11 +179,12 @@ button:disabled { opacity: .5; cursor: default; }
   height: 34px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   color: #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   cursor: pointer;
 }
 
@@ -123,89 +192,130 @@ button:disabled { opacity: .5; cursor: default; }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .arcade-section-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #94a3b8;
 }
 
-/* 2x2 Game Switcher Grid inside Menu */
+/* 2x2 Studio Game Switcher Cards inside Menu */
 .arcade-game-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  width: 100%;
 }
 
 .arcade-game-card {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 11px;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
   color: #f8fafc;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
 }
 
 .arcade-game-card:active {
-  transform: scale(0.97);
+  transform: translateY(1px) scale(0.98);
 }
 
 .arcade-game-card.is-current {
-  background: rgba(245, 158, 11, 0.22);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.28) 0%, rgba(180, 83, 9, 0.22) 100%);
   border-color: #fbbf24;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 3px 0 rgba(146, 64, 14, 0.6), 0 0 16px rgba(245, 158, 11, 0.22);
+}
+
+.game-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
 }
 
 .game-card-icon {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: #fde047;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.game-card-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.arcade-game-card.is-current .game-card-badge {
+  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+  color: #1c1917;
+  font-weight: 900;
 }
 
 .game-card-info {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   min-width: 0;
+  width: 100%;
 }
 
 .game-card-name {
   font-size: 0.82rem;
   font-weight: 800;
   color: #ffffff;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .game-card-status {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #cbd5e1;
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .arcade-game-card.is-current .game-card-status {
-  color: #fde047;
+  color: #fde68a;
 }
 
 /* Settings Rows (Steps Toggle, Theme, Sound) */
 .arcade-settings-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .arcade-setting-row {
@@ -213,10 +323,11 @@ button:disabled { opacity: .5; cursor: default; }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 9px 11px;
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 0;
 }
 
 .setting-row-left {
@@ -224,11 +335,12 @@ button:disabled { opacity: .5; cursor: default; }
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 
 .setting-row-icon {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 9px;
   background: rgba(251, 191, 36, 0.15);
   color: #fbbf24;
@@ -245,23 +357,30 @@ button:disabled { opacity: .5; cursor: default; }
 }
 
 .setting-row-text strong {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .setting-row-text span {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .arcade-toggle-pill {
-  min-width: 62px;
-  height: 34px;
+  min-width: 58px;
+  height: 32px;
   padding: 0 12px;
-  border-radius: 17px;
-  font-size: 0.78rem;
+  border-radius: 16px;
+  font-size: 0.76rem;
   font-weight: 900;
   cursor: pointer;
+  flex-shrink: 0;
   border: 1.5px solid rgba(255, 255, 255, 0.25);
   transition: all 0.15s ease;
 }
@@ -281,20 +400,21 @@ button:disabled { opacity: .5; cursor: default; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 17px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.1);
   border: 1.5px solid rgba(253, 230, 138, 0.4);
   color: #fef3c7;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
+  flex-shrink: 0;
   cursor: pointer;
 }
 
 .arcade-theme-cycle-pill .theme-dot {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   border: 1.5px solid #ffffff;
 }
@@ -307,35 +427,42 @@ button:disabled { opacity: .5; cursor: default; }
   gap: 10px;
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 0;
 }
 
 .menu-player-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+  min-width: 0;
 }
 
 .menu-player-avatar {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid #fbbf24;
+  flex-shrink: 0;
 }
 
 .menu-player-meta {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .menu-player-lbl {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: #94a3b8;
 }
 
 .menu-player-name {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .menu-switch-player-btn {
@@ -344,59 +471,202 @@ button:disabled { opacity: .5; cursor: default; }
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.22);
   color: #fde68a;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
 }
 
 .arcade-resume-btn {
   width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   border-radius: 14px;
   border: none;
   background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 4px 0 #92400e;
 }
 
 /* ========================================================
-   BOARD SIZING & 7-TO-8 LETTER WHEEL REFINEMENTS
+   WORDS OF WONDERS: HEADER STACK, 3-TIER DIFFICULTY BAR & WHEEL
 ======================================================== */
-.login-instruction { color: #fff2cf; font-size: 17px; margin: 4px 0 18px; }
-.manual-login { margin-top: 20px; font-size: 13px; color: #c7d8ce; }
-.manual-login summary { cursor: pointer; min-height: 32px; }
-.login-card { max-height: 94dvh; overflow-y: auto; }
+.wow-header-stack {
+  position: relative;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 10px 2px 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
-.toyblast-app, .matchington-app { gap: 8px; }
-.toyblast-board-wrap, .mm-board-container { flex: 1; min-height: 0; container-type: size; }
-.toyblast-grid, .mm-grid { width: min(100cqw, 100cqh, 440px); height: min(100cqw, 100cqh, 440px); }
-.tb-ctrl-btn, .mm-ctrl-btn { min-height: 46px; }
-.toyblast-footer, .mm-footer { flex-shrink: 0; }
-.tb-cell, .mm-cell { min-width: 0; min-height: 0; overflow: hidden; }
-.tile-icon, .booster-ico, .obs-ico { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
-.tile-icon svg, .booster-ico svg, .obs-ico svg { max-width: 78%; max-height: 78%; }
+.wow-header-stack .wow-hud {
+  padding: 0;
+  min-height: 38px;
+  gap: 6px;
+  width: 100%;
+}
 
-.wow-board-area { min-height: 0; container-type: size; }
-.wow-crossword-grid {
-  --cell-size: min(46px, calc((100cqw - 24px - (var(--wow-cols, 8) - 1) * 4px) / var(--wow-cols, 8)), calc((100cqh - 24px - (var(--wow-rows, 8) - 1) * 4px) / var(--wow-rows, 8)));
+.wow-level-info-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 10px;
+}
+
+.wow-level-wonder {
+  width: 100%;
+  min-width: 0;
+}
+
+.wow-wonder-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wow-hud-stats {
+  flex-shrink: 0;
+  gap: 5px;
+}
+
+/* 3-Tier Segmented Difficulty Bar (Easy | Medium | Hard) */
+.wow-difficulty-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
+  background: rgba(8, 25, 43, 0.62);
+  border: 1px solid rgba(253, 230, 138, 0.28);
+  border-radius: 12px;
+  padding: 3px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
 }
-.wow-cell { font-size: clamp(15px, 2.5vh, 24px); }
 
-/* Scale 7- and 8-letter wheel nodes cleanly so they never crowd */
+.wow-diff-seg-btn {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  min-width: 0;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.wow-diff-seg-btn .diff-lbl {
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.wow-diff-seg-btn .diff-sub {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.wow-diff-seg-btn.is-active {
+  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+  color: #1c1917;
+  box-shadow: 0 2px 0 #78350f;
+}
+
+.wow-diff-seg-btn.is-active .diff-lbl,
+.wow-diff-seg-btn.is-active .diff-sub {
+  color: #1c1917;
+  font-weight: 900;
+  opacity: 1;
+}
+
+/* Board & Wheel Proportions so Bottom Drawer Never Overlaps Wheel */
+.wow-board-area {
+  min-height: 0;
+  flex: 1;
+  container-type: size;
+  padding: 4px 10px;
+}
+
+.wow-crossword-grid {
+  --cell-size: min(44px, calc((100cqw - 20px - (var(--wow-cols, 7) - 1) * 4px) / var(--wow-cols, 7)), calc((100cqh - 20px - (var(--wow-rows, 7) - 1) * 4px) / var(--wow-rows, 7)));
+  gap: 4px;
+  padding: 8px;
+}
+
+.wow-cell {
+  font-size: clamp(14px, 2.4vh, 22px);
+}
+
+.wow-controls-area {
+  padding: 0 12px max(42px, calc(env(safe-area-inset-bottom, 0px) + 38px)) 12px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.wow-preview-wrapper {
+  height: 36px;
+}
+
+.wow-word-preview {
+  height: 34px;
+}
+
+.wow-wheel-disc {
+  --wheel-size: clamp(184px, min(52vw, 26.5dvh), 232px);
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+}
+
+/* Adaptive letter node sizing for Easy (4-5), Medium (6-7), and Hard (7-8) wheels */
 .wow-letter-node {
-  width: clamp(42px, 11.4vw, 50px);
-  height: clamp(42px, 11.4vw, 50px);
-  margin-top: calc(-1 * clamp(42px, 11.4vw, 50px) / 2);
-  margin-left: calc(-1 * clamp(42px, 11.4vw, 50px) / 2);
-  font-size: clamp(1.2rem, 3.8vw, 1.45rem);
+  width: clamp(42px, min(11.5vw, 5.8dvh), 48px);
+  height: clamp(42px, min(11.5vw, 5.8dvh), 48px);
+  margin-top: calc(-1 * clamp(42px, min(11.5vw, 5.8dvh), 48px) / 2);
+  margin-left: calc(-1 * clamp(42px, min(11.5vw, 5.8dvh), 48px) / 2);
+  font-size: clamp(1.15rem, 3.6vw, 1.4rem);
 }
 
-.wow-word-text:empty::after { content: 'Connect the letters'; font-size: 13px; letter-spacing: .03em; color: #f5dfb2; }
-.wow-letter-flight { position: fixed; z-index: 100; display: grid; place-items: center; background: #fff3ca; color: #543010; border: 2px solid #ffd47c; border-radius: 10px; font: 800 24px system-ui; pointer-events: none; box-shadow: 0 4px 14px #0005; }
+.wow-wheel-disc[data-letter-count="7"] .wow-letter-node,
+.wow-wheel-disc[data-letter-count="8"] .wow-letter-node {
+  width: clamp(38px, min(10.2vw, 5.2dvh), 44px);
+  height: clamp(38px, min(10.2vw, 5.2dvh), 44px);
+  margin-top: calc(-1 * clamp(38px, min(10.2vw, 5.2dvh), 44px) / 2);
+  margin-left: calc(-1 * clamp(38px, min(10.2vw, 5.2dvh), 44px) / 2);
+  font-size: clamp(1.05rem, 3.3vw, 1.28rem);
+}
+
+.wow-word-text:empty::after {
+  content: 'Swipe letters to connect';
+  font-size: 12.5px;
+  letter-spacing: .02em;
+  color: #f5dfb2;
+}
+
+.wow-letter-flight {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #fff3ca;
+  color: #543010;
+  border: 2px solid #ffd47c;
+  border-radius: 10px;
+  font: 800 22px system-ui;
+  pointer-events: none;
+  box-shadow: 0 4px 14px #0005;
+}
+
 .solitaire-card.can-move { touch-action: none; }
 
 .wow-game-wrapper[data-wonder-id="5"] { background: linear-gradient(#311f34, #88534f 60%, #d5a07a); }
@@ -404,25 +674,127 @@ button:disabled { opacity: .5; cursor: default; }
 .wow-game-wrapper[data-wonder-id="7"] { background: linear-gradient(#34314d, #a36b78 60%, #deb381); }
 .wow-game-wrapper[data-wonder-id="8"] { background: linear-gradient(#203f4b, #618580 60%, #b3bea6); }
 
+/* ========================================================
+   SPIDER, TOY BLAST & MATCHINGTON MOBILE LAYOUT POLISH
+======================================================== */
+.login-instruction { color: #fff2cf; font-size: 16px; margin: 4px 0 14px; }
+.manual-login { margin-top: 16px; font-size: 13px; color: #c7d8ce; }
+.manual-login summary { cursor: pointer; min-height: 32px; }
+.login-card { max-height: 92dvh; overflow-y: auto; overflow-x: hidden; }
+
+.spider-hud {
+  padding: 6px 12px;
+  gap: 6px;
+}
+
+.spider-hud .hud-item {
+  min-width: 0;
+  flex: 1;
+}
+
+.spider-hud .hud-val {
+  font-size: 1.18rem;
+}
+
+.drawer-footer-section {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.player-info-badge {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.player-info-badge .player-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-footer-actions {
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.drawer-link-btn {
+  white-space: nowrap;
+  padding: 4px 9px;
+  font-size: 0.74rem;
+}
+
+.toyblast-app, .matchington-app {
+  gap: 6px;
+  overflow: hidden;
+}
+
+.toyblast-board-wrap, .mm-board-container {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+}
+
+.toyblast-grid, .mm-grid {
+  width: min(100cqw, 100cqh, 430px);
+  height: min(100cqw, 100cqh, 430px);
+}
+
+.tb-ctrl-btn, .mm-ctrl-btn { min-height: 42px; }
+.toyblast-footer, .mm-footer { flex-shrink: 0; }
+.tb-cell, .mm-cell { min-width: 0; min-height: 0; overflow: hidden; }
+.tile-icon, .booster-ico, .obs-ico { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
+.tile-icon svg, .booster-ico svg, .obs-ico svg { max-width: 78%; max-height: 78%; }
+
+.mm-mode-bar {
+  gap: 5px;
+  padding: 4px;
+}
+
+.mm-mode-btn {
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.wow-lvl-chip {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.furniture-spot {
+  min-width: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 520px) {
-  .tb-ctrl-btn, .mm-ctrl-btn { flex: 1; min-width: 0; justify-content: center; padding: 8px 4px; font-size: 12px; gap: 4px; }
+  .tb-ctrl-btn, .mm-ctrl-btn { flex: 1; min-width: 0; justify-content: center; padding: 7px 4px; font-size: 12px; gap: 4px; }
   .toyblast-footer, .mm-footer { gap: 6px; }
-  .wow-hud { padding: 6px 8px; gap: 4px; }
-  .wow-level-info-btn { padding: 5px 7px; }
+  .wow-level-info-btn { padding: 4px 8px; }
   .wow-level-wonder { font-size: 13px; line-height: 1.15; gap: 4px; }
-  .wow-level-country { font-size: 9px; white-space: nowrap; }
-  .wow-hud-stats { gap: 4px; }
+  .wow-level-country { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wow-stat-pill, .wow-bonus-jar-btn, .wow-menu-pill-btn { padding: 0 8px; font-size: 12px; height: 30px; }
 }
 
 @media (max-height: 740px) and (orientation: portrait) {
-  .wow-wheel-disc { --wheel-size: 206px; }
-  .wow-controls-area { padding-bottom: 18px; gap: 4px; }
-  .mm-mode-btn { min-height: 36px; padding: 4px 8px; font-size: 12px; }
-  .mm-hud, .toyblast-hud { padding: 6px 10px; gap: 5px; }
+  .wow-wheel-disc { --wheel-size: clamp(174px, min(48vw, 24.5dvh), 204px); }
+  .mm-mode-btn { min-height: 34px; padding: 4px 7px; font-size: 11.5px; }
+  .mm-hud, .toyblast-hud { padding: 6px 10px; gap: 4px; }
 }
 
 @media (orientation: landscape) and (max-height: 600px) {
+  .wow-header-stack {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px;
+  }
+  .wow-header-stack .wow-hud { width: auto; flex: 1; }
+  .wow-difficulty-bar { width: auto; margin: 0; }
   .toyblast-app, .matchington-app { max-width: none; display: grid; grid-template-columns: minmax(180px,1fr) minmax(180px,2fr) minmax(120px,1fr); grid-template-rows: minmax(0,1fr); align-items: center; gap: 4px 12px; position: relative; }
   .toyblast-hud, .mm-hud, .toyblast-board-wrap, .mm-board-container { grid-row: 1; min-height: 0; }
   .toyblast-hud, .mm-hud { grid-column: 1; }

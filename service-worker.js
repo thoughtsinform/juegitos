@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jueguitos-v9-icons-fix';
+const CACHE_NAME = 'jueguitos-v10-appstore-polish';
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",

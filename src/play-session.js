@@ -41,7 +41,7 @@ export function attachSession(engine, user, game) {
   const key = `jueguitos_session_v1_${user}_${game}`;
   const fields = {
     spider: ['difficulty', 'columns', 'stock', 'foundations', 'moves', 'score', 'history', 'initialDealSnapshot', 'elapsedSeconds', 'isWon'],
-    wow: ['levelIndex', 'coins', 'stars', 'wheelLetters', 'grid', 'solvedWords', 'bonusWords', 'butterflyCollected', 'isLevelComplete'],
+    wow: ['difficulty', 'levelByDifficulty', 'levelIndex', 'coins', 'stars', 'wheelLetters', 'grid', 'solvedWords', 'bonusWords', 'butterflyCollected', 'isLevelComplete'],
     toyblast: ['levelIndex', 'grid', 'goals', 'score', 'movesLeft', 'isWon', 'isLost', 'stars', 'randomState'],
     matchington: ['levelIndex', 'grid', 'floorGrid', 'goals', 'score', 'movesLeft', 'isWon', 'isLost', 'stars', 'comboCount', 'randomState']
   }[game];
@@ -50,6 +50,12 @@ export function attachSession(engine, user, game) {
   const state = () => copy(Object.fromEntries(fields.map(f => [f, engine[f]])));
 
   const apply = saved => {
+    if (game === 'wow') {
+      if (typeof saved.difficulty === 'string') engine.difficulty = saved.difficulty;
+      if (saved.levelByDifficulty && typeof saved.levelByDifficulty === 'object') {
+        engine.levelByDifficulty = copy(saved.levelByDifficulty);
+      }
+    }
     if (saved.levelIndex !== undefined && engine.initLevel) {
       engine.initLevel(saved.levelIndex);
     }

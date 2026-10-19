@@ -4,12 +4,14 @@
  * bonus word jar, Butterfly tile bonuses, and smart hint progression.
  */
 
-import { WOW_LEVELS } from './levels.js';
+import { WOW_LEVELS, WOW_DIFFICULTIES } from './levels.js';
 import { VALID_ENGLISH_WORDS } from './dictionary.js';
 
 export class WowEngine {
   constructor(user = 'Ellen') {
     this.user = user;
+    this.difficulty = 'easy';
+    this.levelByDifficulty = { easy: 0, medium: 0, hard: 0 };
     this.levelIndex = 0;
     this.coins = 150;
     this.stars = 0;
@@ -30,7 +32,24 @@ export class WowEngine {
     return `juegitos_wow_progress_${this.user}`;
   }
 
+  getLevels() {
+    return WOW_DIFFICULTIES[this.difficulty]?.levels || WOW_LEVELS;
+  }
+
+  setDifficulty(diff) {
+    if (!WOW_DIFFICULTIES[diff]) return this.currentLevel;
+    this.levelByDifficulty[this.difficulty] = this.levelIndex;
+    this.difficulty = diff;
+    const targetIdx = this.levelByDifficulty[diff] || 0;
+    this.initLevel(targetIdx);
+    this.saveProgress();
+    this.saveSession?.();
+    return this.currentLevel;
+  }
+
   loadProgress() {
+    this.difficulty = 'easy';
+    this.levelByDifficulty = { easy: 0, medium: 0, hard: 0 };
     this.levelIndex = 0;
     this.coins = 150;
     this.stars = 0;
@@ -38,7 +57,15 @@ export class WowEngine {
       const raw = localStorage.getItem(this.getStorageKey());
       if (raw) {
         const parsed = JSON.parse(raw);
-        this.levelIndex = typeof parsed.levelIndex === 'number' ? parsed.levelIndex : 0;
+        if (parsed.difficulty && WOW_DIFFICULTIES[parsed.difficulty]) {
+          this.difficulty = parsed.difficulty;
+        }
+        if (parsed.levelByDifficulty && typeof parsed.levelByDifficulty === 'object') {
+          this.levelByDifficulty = { ...this.levelByDifficulty, ...parsed.levelByDifficulty };
+        }
+        this.levelIndex = typeof parsed.levelIndex === 'number'
+          ? parsed.levelIndex
+          : (this.levelByDifficulty[this.difficulty] || 0);
         this.coins = typeof parsed.coins === 'number' ? parsed.coins : 150;
         this.stars = typeof parsed.stars === 'number' ? parsed.stars : 0;
       }
@@ -49,10 +76,13 @@ export class WowEngine {
   }
 
   saveProgress() {
+    this.levelByDifficulty[this.difficulty] = this.levelIndex;
     try {
       localStorage.setItem(
         this.getStorageKey(),
         JSON.stringify({
+          difficulty: this.difficulty,
+          levelByDifficulty: this.levelByDifficulty,
           levelIndex: this.levelIndex,
           coins: this.coins,
           stars: this.stars,
@@ -73,9 +103,11 @@ export class WowEngine {
   }
 
   initLevel(idx = this.levelIndex) {
-    const safeIdx = Math.max(0, idx) % WOW_LEVELS.length;
+    const levels = this.getLevels();
+    const safeIdx = Math.max(0, idx) % levels.length;
     this.levelIndex = safeIdx;
-    this.currentLevel = WOW_LEVELS[safeIdx];
+    this.levelByDifficulty[this.difficulty] = safeIdx;
+    this.currentLevel = levels[safeIdx];
     this.wheelLetters = [...this.currentLevel.letters];
     this.solvedWords = new Set();
     this.bonusWords = new Set();
@@ -372,7 +404,8 @@ export class WowEngine {
   }
 
   nextLevel() {
-    this.levelIndex = (this.levelIndex + 1) % WOW_LEVELS.length;
+    const levels = this.getLevels();
+    this.levelIndex = (this.levelIndex + 1) % levels.length;
     this.initLevel(this.levelIndex);
     this.saveProgress();
     return this.currentLevel;

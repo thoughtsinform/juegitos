@@ -10,7 +10,7 @@
 
 import { sound } from '../sound.js';
 import { Icons } from '../icons.js';
-import { WOW_LEVELS, WONDER_LANDMARKS } from './levels.js';
+import { WOW_DIFFICULTIES, WONDER_LANDMARKS } from './levels.js';
 import { showToast } from '../toast.js';
 
 export class WowUI {
@@ -79,46 +79,54 @@ export class WowUI {
   render() {
     if (!this.container) return;
 
+    const levels = this.engine.getLevels ? this.engine.getLevels() : WOW_DIFFICULTIES.easy.levels;
+    const curDiff = this.engine.difficulty || 'easy';
     const lvl = this.engine.currentLevel;
     const wonderThemeIdx = ((lvl.id - 1) % 8) + 1;
     const landmarkSvg = WONDER_LANDMARKS[wonderThemeIdx] || WONDER_LANDMARKS[1];
 
     this.container.innerHTML = `
-      <div class="wow-game-wrapper" id="wowWrapper" data-wonder-id="${wonderThemeIdx}">
+      <div class="wow-game-wrapper ${this.drawerOpen ? 'drawer-open' : ''}" id="wowWrapper" data-wonder-id="${wonderThemeIdx}">
         <!-- Atmospheric Sky & Custom Wonder Landmark Backdrop -->
         <div class="wow-backdrop-stars"></div>
         <div class="wow-backdrop-mountains">${landmarkSvg}</div>
 
-        <!-- 1. Top Status HUD -->
-        <header class="wow-hud">
-          <button type="button" class="wow-level-info-btn" id="wowLevelPickerBtn" title="Tap to choose Wonder Level">
-            <div class="wow-level-wonder">
-              <span class="wow-wonder-icon">${Icons.monument('wonder-svg', 18)}</span>
-              <span>${lvl.wonder}</span>
-            </div>
-            <div class="wow-level-country">${lvl.country} • Wonder ${lvl.id} of ${WOW_LEVELS.length}</div>
-          </button>
-
-          <div class="wow-hud-stats">
-            <button type="button" class="wow-bonus-jar-btn ${this.engine.bonusWords.size > 0 ? 'jar-pulse' : ''}" id="wowBonusJarBtn" title="Bonus Words Collected">
-              <span class="jar-icon">${Icons.jar('jar-svg', 16)}</span>
-              <span id="wowBonusCount">${this.engine.bonusWords.size}</span>
+        <!-- 1. Top Status HUD + 3-Tier Difficulty Bar -->
+        <header class="wow-header-stack">
+          <div class="wow-hud">
+            <button type="button" class="wow-level-info-btn" id="wowLevelPickerBtn" title="Tap to choose Wonder Level">
+              <div class="wow-level-wonder">
+                <span class="wow-wonder-icon">${Icons.monument('wonder-svg', 17)}</span>
+                <span class="wow-wonder-title-text">${lvl.wonder}</span>
+              </div>
+              <div class="wow-level-country">${lvl.country} • Wonder ${lvl.id} of ${levels.length}</div>
             </button>
 
-            <div class="wow-stat-pill stars" title="Wonder Stars">
-              <span class="stat-icon">${Icons.star('star-svg', 15)}</span>
-              <span id="wowStarsVal">${this.engine.stars}</span>
-            </div>
+            <div class="wow-hud-stats">
+              <button type="button" class="wow-bonus-jar-btn ${this.engine.bonusWords.size > 0 ? 'jar-pulse' : ''}" id="wowBonusJarBtn" title="Bonus Words Collected">
+                <span class="jar-icon">${Icons.jar('jar-svg', 15)}</span>
+                <span id="wowBonusCount">${this.engine.bonusWords.size}</span>
+              </button>
 
-            <div class="wow-stat-pill coins" title="Gold Coins">
-              <span class="stat-icon">${Icons.coin('coin-svg', 15)}</span>
-              <span id="wowCoinsVal">${this.engine.coins}</span>
-            </div>
+              <div class="wow-stat-pill coins" title="Gold Coins">
+                <span class="stat-icon">${Icons.coin('coin-svg', 15)}</span>
+                <span id="wowCoinsVal">${this.engine.coins}</span>
+              </div>
 
-            <button type="button" class="wow-menu-pill-btn" data-action="open-arcade-menu" title="Menu & Switch Game">
-              ${Icons.settings('menu-svg', 15)}
-              <span>Menu</span>
-            </button>
+              <button type="button" class="wow-menu-pill-btn" data-action="open-arcade-menu" title="Menu & Switch Game">
+                ${Icons.settings('menu-svg', 15)}
+                <span>Menu</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="wow-difficulty-bar" role="group" aria-label="Puzzle Difficulty">
+            ${Object.values(WOW_DIFFICULTIES).map(d => `
+              <button type="button" class="wow-diff-seg-btn ${curDiff === d.id ? 'is-active' : ''}" data-wow-diff="${d.id}">
+                <span class="diff-lbl">${d.label}</span>
+                <span class="diff-sub">${d.subtitle}</span>
+              </button>
+            `).join('')}
           </div>
         </header>
 
@@ -152,7 +160,7 @@ export class WowUI {
             </div>
 
             <!-- Center Anagram Touch Wheel -->
-            <div class="wow-wheel-disc" id="wowWheelDisc">
+            <div class="wow-wheel-disc" id="wowWheelDisc" data-letter-count="${this.engine.wheelLetters.length}">
               <canvas class="wow-wheel-canvas" id="wowWheelCanvas"></canvas>
 
               <button type="button" class="wow-wheel-center-shuffle" id="wowCenterShuffleBtn" title="Shuffle Wheel Letters" aria-label="Shuffle Letters">
@@ -202,14 +210,25 @@ export class WowUI {
               </button>
             </div>
 
+            <div class="drawer-section">
+              <span class="drawer-section-title">Word Difficulty (Saves Progress Per Tier)</span>
+              <div class="difficulty-pills">
+                ${Object.values(WOW_DIFFICULTIES).map(d => `
+                  <button type="button" class="diff-pill ${curDiff === d.id ? 'active' : ''}" data-wow-diff="${d.id}">
+                    ${d.label} (${d.subtitle})
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
             <div class="drawer-footer-section">
               <div class="player-info-badge">
                 <img class="player-avatar-img" src="${this.currentUser.avatar}" alt="${this.currentUser.displayName}">
-                <span class="player-name">Playing as <strong>${this.currentUser.displayName}</strong></span>
+                <span class="player-name"><strong>${this.currentUser.displayName}</strong></span>
               </div>
               <div class="drawer-footer-actions">
                 <button class="drawer-link-btn" id="wowDrawerFreeCoinsBtn">+100 Coins</button>
-                <button class="drawer-link-btn" data-action="open-arcade-menu">Menu / Switch Game</button>
+                <button class="drawer-link-btn" data-action="open-arcade-menu">Game Menu</button>
               </div>
             </div>
           </div>
@@ -233,12 +252,12 @@ export class WowUI {
         <div class="wow-modal-overlay" id="wowInfoModal">
           <div class="wow-info-card">
             <div class="wow-modal-header">
-              <div class="wow-modal-title">${Icons.monument('modal-svg', 22)} <span>Wonders & Guide</span></div>
+              <div class="wow-modal-title">${Icons.monument('modal-svg', 22)} <span>Wonders (${WOW_DIFFICULTIES[curDiff]?.label || 'Easy'})</span></div>
               <button type="button" class="wow-modal-close-btn" id="wowCloseInfoModalBtn">${Icons.close('', 18)}</button>
             </div>
 
             <div class="wow-levels-MiniGrid" id="wowLevelsPickerGrid">
-              ${WOW_LEVELS.map((w, idx) => `
+              ${levels.map((w, idx) => `
                 <button type="button" class="wow-lvl-chip ${idx === this.engine.levelIndex ? 'active' : ''}" data-lvl="${idx}">
                   <span class="w-num">#${w.id}</span>
                   <span class="w-name">${w.wonder}</span>
@@ -369,9 +388,9 @@ export class WowUI {
     const h = this.wheelEl.clientHeight || 250;
     const centerX = w / 2;
     const centerY = h / 2;
-    const radius = w * 0.34;
-
     const count = this.engine.wheelLetters.length;
+    const radius = count >= 7 ? w * 0.355 : w * 0.335;
+
     this.nodePositions = [];
 
     for (let i = 0; i < count; i++) {
@@ -392,6 +411,19 @@ export class WowUI {
     if (this.wheelEl) {
       this.wheelEl.addEventListener('pointerdown', this.onPointerDown);
     }
+
+    // 3-Tier Difficulty Buttons (Easy, Medium, Hard)
+    this.container.querySelectorAll('[data-wow-diff]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nextDiff = btn.dataset.wowDiff;
+        if (!nextDiff || nextDiff === this.engine.difficulty) return;
+        sound.playPop(1.1);
+        this.engine.setDifficulty(nextDiff);
+        const diffMeta = WOW_DIFFICULTIES[nextDiff];
+        showToast(`Switched to ${diffMeta ? diffMeta.label : nextDiff} (${diffMeta ? diffMeta.subtitle : ''})`, 'info', 1800);
+        this.render();
+      });
+    });
 
     const doShuffle = () => {
       if (this.isDragging) return;

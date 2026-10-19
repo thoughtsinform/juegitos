@@ -25,7 +25,7 @@ export const GAME_META = {
   },
   [GAMES.WOW]: {
     name: 'Words of Wonders',
-    subtitle: '24 World Wonder Crosswords',
+    subtitle: 'World Crosswords',
     icon: (cls, sz) => Icons.tiles(cls, sz)
   },
   [GAMES.TOYBLAST]: {
@@ -35,7 +35,7 @@ export const GAME_META = {
   },
   [GAMES.MATCHINGTON]: {
     name: 'Matchington Mansion',
-    subtitle: 'Match-3 & Room Design',
+    subtitle: 'Match-3 & Design',
     icon: (cls, sz) => Icons.mansion(cls, sz)
   }
 };
@@ -125,17 +125,20 @@ export class ArcadeNav {
 
           <!-- Section 1: Exit & Switch Game -->
           <div class="arcade-menu-section">
-            <div class="arcade-section-label">Exit & Switch Game (Auto-Saves Progress)</div>
+            <div class="arcade-section-label">Switch Game (Auto-Saves)</div>
             <div class="arcade-game-grid">
               ${Object.values(GAMES).map(gameKey => {
                 const meta = GAME_META[gameKey];
                 const isCurrent = this.activeGame === gameKey;
                 return `
                   <button type="button" class="arcade-game-card ${isCurrent ? 'is-current' : ''}" data-game="${gameKey}">
-                    <div class="game-card-icon">${meta.icon('game-card-svg', 24)}</div>
+                    <div class="game-card-top">
+                      <div class="game-card-icon">${meta.icon('game-card-svg', 22)}</div>
+                      <span class="game-card-badge">${isCurrent ? 'Playing' : 'Switch'}</span>
+                    </div>
                     <div class="game-card-info">
                       <span class="game-card-name">${meta.name}</span>
-                      <span class="game-card-status">${isCurrent ? 'Playing Now' : 'Save & Switch'}</span>
+                      <span class="game-card-status">${meta.subtitle}</span>
                     </div>
                   </button>
                 `;

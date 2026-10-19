@@ -1,23 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WowEngine } from '../src/wow/engine.js';
-import { WOW_LEVELS } from '../src/wow/levels.js';
+import { WOW_DIFFICULTIES } from '../src/wow/levels.js';
 global.localStorage = { getItem: () => null, setItem() {} };
-test('Every crossword has legal letters, matching intersections, and can be completed', () => {
-  for (let i=0;i<WOW_LEVELS.length;i++) {
-    const e = new WowEngine('qa'); e.initLevel(i);
-    const seen = new Map();
-    for (const w of e.currentLevel.words) {
-      assert.equal(e.canFormFromWheel(w.word), true, w.word);
-      for (const [j,p] of e.getWordCells(w).entries()) {
-        const k = `${p.r},${p.c}`; assert.ok(e.grid[p.r]?.[p.c]);
-        if (seen.has(k)) assert.equal(seen.get(k), w.word[j], `${i}: intersection ${k}`);
-        seen.set(k, w.word[j]);
+test('Every crossword across Easy, Medium, and Hard (72 boards) has legal letters, matching intersections, and can be completed', () => {
+  for (const diff of Object.keys(WOW_DIFFICULTIES)) {
+    const levels = WOW_DIFFICULTIES[diff].levels;
+    assert.equal(levels.length, 24, `${diff} should have 24 levels`);
+    for (let i = 0; i < levels.length; i++) {
+      const e = new WowEngine('qa');
+      e.setDifficulty(diff);
+      e.initLevel(i);
+      const seen = new Map();
+      for (const w of e.currentLevel.words) {
+        assert.equal(e.canFormFromWheel(w.word), true, `${diff} lvl ${i}: ${w.word}`);
+        for (const [j, p] of e.getWordCells(w).entries()) {
+          const k = `${p.r},${p.c}`;
+          assert.ok(e.grid[p.r]?.[p.c]);
+          if (seen.has(k)) assert.equal(seen.get(k), w.word[j], `${diff} ${i}: intersection ${k}`);
+          seen.set(k, w.word[j]);
+        }
       }
+      for (const w of e.currentLevel.words) e.submitWord(w.word);
+      assert.equal(e.isLevelComplete, true, `${diff} lvl ${i} failed to complete`);
+      const coins = e.coins;
+      e.checkLevelCompletion();
+      assert.equal(e.coins, coins);
     }
-    for (const w of e.currentLevel.words) e.submitWord(w.word);
-    assert.equal(e.isLevelComplete, true); const coins = e.coins;
-    e.checkLevelCompletion(); assert.equal(e.coins, coins);
   }
 });
 test('Words reject unavailable letters and duplicate rewards; hints finish puzzles', () => {

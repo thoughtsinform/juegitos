@@ -141,11 +141,11 @@ export class SpiderUI {
             <div class="drawer-footer-section">
               <div class="player-info-badge">
                 <img class="player-avatar-img" src="${this.currentUser.avatar}" alt="${this.currentUser.displayName}">
-                <span class="player-name">Playing as <strong>${this.currentUser.displayName}</strong></span>
+                <span class="player-name"><strong>${this.currentUser.displayName}</strong></span>
               </div>
               <div class="drawer-footer-actions">
                 <button class="drawer-link-btn" id="drawerRestartBtn" title="Replay this exact deal from move 0">Replay Hand</button>
-                <button class="drawer-link-btn" data-action="open-arcade-menu">Menu / Switch Game</button>
+                <button class="drawer-link-btn" data-action="open-arcade-menu">Game Menu</button>
               </div>
             </div>
           </div>
