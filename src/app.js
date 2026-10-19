@@ -216,32 +216,46 @@ class App {
       onUserSwitch: () => this.handleSwitchUser()
     };
 
-    if (game === GAMES.SPIDER) {
-      if (!this.spiderEngine) {
-        this.spiderEngine = new SpiderEngine(2);
-        this.spiderEngine.startNewGame(2);
-        attachSession(this.spiderEngine, this.currentUser.username, 'spider');
+    const launchSelectedGame = (targetGame) => {
+      if (targetGame === GAMES.SPIDER) {
+        if (!this.spiderEngine) {
+          this.spiderEngine = new SpiderEngine(2);
+          this.spiderEngine.startNewGame(2);
+          attachSession(this.spiderEngine, this.currentUser.username, 'spider');
+        }
+        this.spiderUI = new SpiderUI(this.spiderEngine, this.gameContainer, uiOptions);
+        this.activeUI = this.spiderUI;
+      } else if (targetGame === GAMES.WOW) {
+        if (!this.wowEngine) {
+          this.wowEngine = attachSession(new WowEngine(this.currentUser.username), this.currentUser.username, 'wow');
+        }
+        this.wowUI = new WowUI(this.wowEngine, this.gameContainer, uiOptions);
+        this.activeUI = this.wowUI;
+      } else if (targetGame === GAMES.TOYBLAST) {
+        if (!this.toyBlastEngine) {
+          this.toyBlastEngine = attachSession(new ToyBlastEngine(this.currentUser.username), this.currentUser.username, 'toyblast');
+        }
+        this.toyBlastUI = new ToyBlastUI(this.toyBlastEngine, this.gameContainer, uiOptions);
+        this.activeUI = this.toyBlastUI;
+      } else if (targetGame === GAMES.MATCHINGTON) {
+        if (!this.matchingtonEngine) {
+          this.matchingtonEngine = attachSession(new MatchingtonEngine(this.currentUser.username), this.currentUser.username, 'matchington');
+        }
+        this.matchingtonUI = new MatchingtonUI(this.matchingtonEngine, this.gameContainer, uiOptions);
+        this.activeUI = this.matchingtonUI;
       }
-      this.spiderUI = new SpiderUI(this.spiderEngine, this.gameContainer, uiOptions);
-      this.activeUI = this.spiderUI;
-    } else if (game === GAMES.WOW) {
-      if (!this.wowEngine) {
-        this.wowEngine = attachSession(new WowEngine(this.currentUser.username), this.currentUser.username, 'wow');
-      }
-      this.wowUI = new WowUI(this.wowEngine, this.gameContainer, uiOptions);
-      this.activeUI = this.wowUI;
-    } else if (game === GAMES.TOYBLAST) {
-      if (!this.toyBlastEngine) {
-        this.toyBlastEngine = attachSession(new ToyBlastEngine(this.currentUser.username), this.currentUser.username, 'toyblast');
-      }
-      this.toyBlastUI = new ToyBlastUI(this.toyBlastEngine, this.gameContainer, uiOptions);
-      this.activeUI = this.toyBlastUI;
-    } else if (game === GAMES.MATCHINGTON) {
-      if (!this.matchingtonEngine) {
-        this.matchingtonEngine = attachSession(new MatchingtonEngine(this.currentUser.username), this.currentUser.username, 'matchington');
-      }
-      this.matchingtonUI = new MatchingtonUI(this.matchingtonEngine, this.gameContainer, uiOptions);
-      this.activeUI = this.matchingtonUI;
+    };
+
+    try {
+      launchSelectedGame(game);
+    } catch (err) {
+      // Self-healing fallback: clear stale session for this game and re-initialize cleanly
+      try {
+        localStorage.removeItem(`jueguitos_session_v1_${this.currentUser.username}_${game}`);
+      } catch (e) {}
+      this.spiderEngine = this.wowEngine = this.toyBlastEngine = this.matchingtonEngine = null;
+      this.gameContainer.innerHTML = '';
+      launchSelectedGame(game);
     }
   }
 
@@ -265,9 +279,50 @@ class App {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new App();
+const bootApp = () => {
   if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
   }
-});
+
+  let appInstance = null;
+  try {
+    appInstance = new App();
+  } catch (err) {
+    // Clear potentially corrupted game sessions while keeping player auth, then retry
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('jueguitos_session_v1_')) localStorage.removeItem(k);
+      });
+    } catch (e) {}
+    try {
+      appInstance = new App();
+    } catch (retryErr) {
+      const loginModal = document.getElementById('loginModal');
+      if (loginModal) loginModal.style.display = 'flex';
+    }
+  }
+
+  // Final safety check: never allow both loginModal and gameContainer to be empty/hidden
+  const gameContainer = document.getElementById('gameContainer');
+  const loginModal = document.getElementById('loginModal');
+  if (
+    gameContainer &&
+    loginModal &&
+    gameContainer.innerHTML.trim() === '' &&
+    loginModal.style.display === 'none'
+  ) {
+    if (appInstance) {
+      appInstance.showLogin();
+    } else {
+      loginModal.style.display = 'flex';
+    }
+  }
+};
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', bootApp, { once: true });
+} else {
+  bootApp();
+}

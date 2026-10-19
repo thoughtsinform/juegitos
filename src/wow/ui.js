@@ -314,8 +314,8 @@ export class WowUI {
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const cell = this.engine.grid[r][c];
-        if (!cell.active) {
+        const cell = this.engine.grid?.[r]?.[c];
+        if (!cell || !cell.active) {
           html += `<div class="wow-cell is-empty" data-r="${r}" data-c="${c}"></div>`;
         } else {
           const stateClass = cell.revealed ? 'is-revealed' : 'is-slot';

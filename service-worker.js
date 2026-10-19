@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jueguitos-v7-menu-24wonders';
+const CACHE_NAME = 'jueguitos-v8-safari-fix';
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -45,31 +45,62 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+      return Promise.all(
+        ASSETS_TO_CACHE.map((url) =>
+          fetch(new Request(url, { cache: 'reload' }))
+            .then((res) => (res.ok ? cache.put(url, res) : undefined))
+            .catch(() => {})
+        )
+      );
+    })
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    (async () => {
+      const keys = await caches.keys();
+      let hadOldCache = false;
+      await Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            hadOldCache = true;
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim())
+      await self.clients.claim();
+      if (hadOldCache) {
+        const windowClients = await self.clients.matchAll({ type: 'window' });
+        for (const client of windowClients) {
+          if ('navigate' in client) {
+            client.navigate(client.url).catch(() => {});
+          }
+        }
+      }
+    })()
   );
 });
 
+// Network-First with Offline Cache Fallback so iOS Safari never gets stuck on stale JS/CSS
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const cloned = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, cloned);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
 });
