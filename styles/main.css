@@ -320,103 +320,136 @@ html, body {
 
 .drawer-content {
   width: 100%;
-  background: #0d381c;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
-  padding: 20px 24px;
+  max-height: min(44vh, 260px); /* Strictly bounds drawer to lower-third */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: #0a3017;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.55);
+  padding: 12px 14px max(14px, env(safe-area-inset-bottom, 14px)) 14px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px; /* Tightened from 18px */
 }
 
+/* Quick Actions: 4 equal cards with 44px minimum tap targets */
 .drawer-quick-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 8px; /* Tightened from 12px */
 }
 
 .drawer-action-btn {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 12px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 6px 2px;
+  min-height: 48px; /* Accessible 44px+ touch standard */
   color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  justify-content: center;
+  gap: 2px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .drawer-action-btn:active {
+  transform: scale(0.96);
   background: rgba(255, 255, 255, 0.18);
 }
 
 .drawer-action-btn .btn-icon {
-  font-size: 1.4rem;
+  font-size: 1.15rem; /* Balanced icon size */
+  line-height: 1;
+}
+
+.drawer-action-btn .btn-text {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* Difficulty Selector Section */
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .drawer-section-title {
-  display: block;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   color: var(--text-dim);
-  margin-bottom: 8px;
 }
 
 .difficulty-pills {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .diff-pill {
   flex: 1;
-  padding: 10px;
+  min-height: 36px;
+  padding: 4px 6px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  border-radius: 8px;
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .diff-pill.active {
   background: #f59e0b;
-  color: #1e1e1e;
+  color: #1a1a1a;
   border-color: #f59e0b;
+  font-weight: 700;
 }
 
+/* Footer Section: Single Row for Player + Actions */
 .drawer-footer-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 8px;
+  margin-top: 2px;
 }
 
 .player-info-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.player-avatar {
+  font-size: 1rem;
 }
 
 .drawer-footer-actions {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
 .drawer-link-btn {
   background: none;
   border: none;
-  color: #60a5fa;
-  font-size: 0.85rem;
+  color: #93c5fd;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 4px 6px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   text-decoration: underline;
 }
 
@@ -520,6 +553,6 @@ html, body {
   }
 
   .spider-game-wrapper.drawer-open .spider-tableau {
-    padding-bottom: 260px;
+    padding-bottom: 180px;
   }
 }

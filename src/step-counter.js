@@ -64,20 +64,27 @@ export class StepCounter {
     }
   }
 
+  triggerHaptic(type = 'light') {
+    if ('vibrate' in navigator) {
+      try {
+        if (type === 'light') navigator.vibrate(12);
+        else if (type === 'medium') navigator.vibrate([18, 30, 18]);
+        else if (type === 'celebrate') navigator.vibrate([50, 80, 50, 80, 150]);
+      } catch (e) {}
+    }
+  }
+
   /**
    * Automatic permission & auto-start tracking
-   * Persists permission state and attaches listener on first user touch if required by iOS.
    */
   initAutoTracking() {
     const isGranted = localStorage.getItem('juegitos_motion_permission') === 'granted';
 
-    // If DeviceMotionEvent exists without iOS permission API (Android, Chrome, desktop)
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
       this.startListening();
       return;
     }
 
-    // On iOS: if already granted in this session/origin, start listening
     if (isGranted) {
       this.startListening();
     }
@@ -103,8 +110,6 @@ export class StepCounter {
           localStorage.setItem('juegitos_motion_permission', 'granted');
           this.startListening();
           return true;
-        } else {
-          console.warn('Device motion permission denied');
         }
       } catch (err) {
         console.warn('Error requesting device motion permission:', err);
@@ -133,6 +138,7 @@ export class StepCounter {
   }
 
   toggleTracking() {
+    this.triggerHaptic('light');
     if (this.isListening) {
       this.stopListening();
     } else {
@@ -151,7 +157,6 @@ export class StepCounter {
     const rawMag = Math.sqrt(x * x + y * y + z * z);
     const now = Date.now();
 
-    // High-pass filter to remove constant 1g gravity and low-pass to smooth noise
     const alpha = 0.8;
     this.filteredMag = alpha * this.filteredMag + (1 - alpha) * rawMag;
     const delta = Math.abs(rawMag - this.filteredMag);
@@ -167,10 +172,10 @@ export class StepCounter {
     this.saveState();
     this.updateDisplay();
 
-    // Check goal countdown
     if (this.steps >= this.goal && !this.goalCelebrated) {
       this.goalCelebrated = true;
       sound.playStepGoalMet();
+      this.triggerHaptic('celebrate');
       this.triggerGoalCelebration();
     }
   }
@@ -185,13 +190,6 @@ export class StepCounter {
     }
   }
 
-  resetSession() {
-    this.steps = 0;
-    this.goalCelebrated = false;
-    this.saveState();
-    this.updateDisplay();
-  }
-
   triggerGoalCelebration() {
     const banner = this.container?.querySelector('.step-counter-bar');
     if (banner) {
@@ -200,85 +198,155 @@ export class StepCounter {
     }
   }
 
+  spawnFloatingBadge(x, y, text = '+100 Steps!') {
+    const badge = document.createElement('div');
+    badge.className = 'floating-step-badge';
+    badge.textContent = text;
+    badge.style.left = `${x - 40}px`;
+    badge.style.top = `${y - 15}px`;
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 850);
+  }
+
+  openGoalSheet() {
+    this.triggerHaptic('light');
+    let tempGoal = this.goal;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'goal-modal-overlay';
+    overlay.innerHTML = `
+      <div class="goal-modal-sheet">
+        <div class="goal-sheet-header">
+          <span class="goal-sheet-title">🎯 Set Walking Step Goal</span>
+          <button class="goal-sheet-close" id="goalSheetCloseBtn">✕</button>
+        </div>
+
+        <div class="goal-chips-grid">
+          <button class="goal-chip ${tempGoal === 1000 ? 'active' : ''}" data-val="1000">1,000</button>
+          <button class="goal-chip ${tempGoal === 3000 ? 'active' : ''}" data-val="3000">3,000</button>
+          <button class="goal-chip ${tempGoal === 5000 ? 'active' : ''}" data-val="5000">5,000</button>
+          <button class="goal-chip ${tempGoal === 10000 ? 'active' : ''}" data-val="10000">10,000</button>
+        </div>
+
+        <div class="goal-stepper">
+          <button class="stepper-btn" id="stepperMinusBtn">−</button>
+          <span class="stepper-val" id="stepperValText">${tempGoal.toLocaleString()}</span>
+          <button class="stepper-btn" id="stepperPlusBtn">+</button>
+        </div>
+
+        <button class="goal-save-btn" id="goalSaveBtn">Set Goal</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const valText = overlay.querySelector('#stepperValText');
+    const chips = overlay.querySelectorAll('.goal-chip');
+
+    const updateModalDisplay = () => {
+      if (valText) valText.textContent = tempGoal.toLocaleString();
+      chips.forEach(c => {
+        c.classList.toggle('active', parseInt(c.dataset.val, 10) === tempGoal);
+      });
+    };
+
+    chips.forEach(c => {
+      c.addEventListener('click', () => {
+        this.triggerHaptic('light');
+        tempGoal = parseInt(c.dataset.val, 10);
+        updateModalDisplay();
+      });
+    });
+
+    overlay.querySelector('#stepperMinusBtn')?.addEventListener('click', () => {
+      this.triggerHaptic('light');
+      tempGoal = Math.max(500, tempGoal - 500);
+      updateModalDisplay();
+    });
+
+    overlay.querySelector('#stepperPlusBtn')?.addEventListener('click', () => {
+      this.triggerHaptic('light');
+      tempGoal = Math.min(50000, tempGoal + 500);
+      updateModalDisplay();
+    });
+
+    const closeModal = () => {
+      overlay.remove();
+    };
+
+    overlay.querySelector('#goalSheetCloseBtn')?.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    overlay.querySelector('#goalSaveBtn')?.addEventListener('click', () => {
+      this.triggerHaptic('medium');
+      this.setGoal(tempGoal);
+      closeModal();
+    });
+  }
+
   render() {
     if (!this.container) return;
 
     this.container.innerHTML = `
       <div class="step-counter-bar" id="stepCounterBar">
-        <div class="step-deck">
-          <!-- 1. Live Steps & Remaining -->
-          <div class="step-card card-steps">
-            <span class="card-icon">👟</span>
-            <div class="card-content">
-              <div class="card-head">
-                <span class="card-val" id="stepLiveVal">${this.steps.toLocaleString()}</span>
-                <span class="card-label">STEPS</span>
-              </div>
-              <div class="card-sub" id="stepCountdownText"></div>
+        <div class="step-dock-v2">
+          <!-- Left Hero Card: Live Steps + Remaining + Progress -->
+          <button type="button" class="dock-hero-card" id="stepGoalTrigger" aria-label="Step progress. Tap to adjust goal">
+            <div class="dock-icon-ring">
+              <span class="dock-emoji">👟</span>
             </div>
+            <div class="dock-hero-data">
+              <div class="dock-val-row">
+                <span class="dock-val" id="stepLiveVal">${this.steps.toLocaleString()}</span>
+                <span class="dock-unit">STEPS</span>
+              </div>
+              <div class="dock-sub" id="stepCountdownText"></div>
+            </div>
+            <span class="dock-chevron-indicator">🎯</span>
+          </button>
+
+          <!-- Right Action Cluster: 44px minimum touch targets -->
+          <div class="dock-actions">
+            <!-- Manual +100 Quick Add with Floating Particle -->
+            <button type="button" class="dock-pill-btn add-btn" id="manualAddBtn" aria-label="Add 100 steps">
+              <span class="pill-icon">➕</span>
+              <span class="pill-text">100</span>
+            </button>
+
+            <!-- Sensor State Toggle -->
+            <button type="button" class="dock-pill-btn sensor-btn ${this.isListening ? 'is-active' : ''}" id="toggleSensorBtn" aria-label="Toggle motion tracking">
+              <span class="status-pulse-dot" id="statusDot"></span>
+              <span class="pill-text" id="statusText">${this.isListening ? 'ON' : 'OFF'}</span>
+            </button>
           </div>
-
-          <!-- 2. Goal Target (Tap to Edit) -->
-          <button type="button" class="step-card card-goal" id="editGoalBtn" title="Set daily step goal">
-            <span class="card-icon">🎯</span>
-            <div class="card-content">
-              <div class="card-head">
-                <span class="card-val" id="stepGoalVal">${this.goal.toLocaleString()}</span>
-                <span class="card-label">GOAL</span>
-              </div>
-              <div class="card-sub">Tap to edit</div>
-            </div>
-          </button>
-
-          <!-- 3. Sensor State (Auto-tracking status / Pause) -->
-          <button type="button" class="step-card card-status ${this.isListening ? 'is-tracking' : ''}" id="toggleSensorBtn" title="Start/Pause automatic pedometer">
-            <span class="card-icon status-dot" id="statusDot">${this.isListening ? '🟢' : '⏸️'}</span>
-            <div class="card-content">
-              <div class="card-head">
-                <span class="card-val" id="statusText">${this.isListening ? 'ACTIVE' : 'PAUSED'}</span>
-                <span class="card-label">PEDO</span>
-              </div>
-              <div class="card-sub" id="statusSub">${this.isListening ? 'Auto-tracking' : 'Tap to start'}</div>
-            </div>
-          </button>
-
-          <!-- 4. Quick Manual Add (+100) -->
-          <button type="button" class="step-card card-add" id="manualAddBtn" title="Add 100 steps manually">
-            <span class="card-icon">➕</span>
-            <div class="card-content">
-              <div class="card-head">
-                <span class="card-val">+100</span>
-                <span class="card-label">ADD</span>
-              </div>
-              <div class="card-sub">Steps</div>
-            </div>
-          </button>
         </div>
 
-        <!-- Sleek progress track along bottom edge -->
+        <!-- Sleek Global Progress Bar along bottom edge of banner -->
         <div class="step-banner-progress-track">
           <div class="step-banner-progress-fill" id="stepProgressBar"></div>
         </div>
       </div>
     `;
 
-    // Wire events
-    const toggleBtn = this.container.querySelector('#toggleSensorBtn');
-    toggleBtn?.addEventListener('click', () => {
+    // Wire Goal Sheet trigger
+    this.container.querySelector('#stepGoalTrigger')?.addEventListener('click', () => {
+      this.openGoalSheet();
+    });
+
+    // Wire Sensor toggle
+    this.container.querySelector('#toggleSensorBtn')?.addEventListener('click', () => {
       this.toggleTracking();
     });
 
-    const editGoalBtn = this.container.querySelector('#editGoalBtn');
-    editGoalBtn?.addEventListener('click', () => {
-      const input = prompt(`Set your walking step goal for ${this.user}:`, this.goal);
-      if (input !== null) {
-        this.setGoal(input);
-      }
-    });
-
-    const manualAddBtn = this.container.querySelector('#manualAddBtn');
-    manualAddBtn?.addEventListener('click', () => {
+    // Wire Manual Add with floating particle
+    const manualBtn = this.container.querySelector('#manualAddBtn');
+    manualBtn?.addEventListener('click', (e) => {
       sound.playCardSlide();
+      this.triggerHaptic('light');
+      const rect = manualBtn.getBoundingClientRect();
+      this.spawnFloatingBadge(rect.left + rect.width / 2, rect.top, '+100 Steps!');
       this.addSteps(100);
     });
 
@@ -288,19 +356,12 @@ export class StepCounter {
   updateDisplay() {
     const liveVal = this.container?.querySelector('#stepLiveVal');
     const countdownText = this.container?.querySelector('#stepCountdownText');
-    const goalVal = this.container?.querySelector('#stepGoalVal');
     const progressBar = this.container?.querySelector('#stepProgressBar');
-    const statusCard = this.container?.querySelector('.card-status');
-    const statusDot = this.container?.querySelector('#statusDot');
+    const sensorBtn = this.container?.querySelector('.sensor-btn');
     const statusText = this.container?.querySelector('#statusText');
-    const statusSub = this.container?.querySelector('#statusSub');
 
     if (liveVal) {
       liveVal.textContent = this.steps.toLocaleString();
-    }
-
-    if (goalVal) {
-      goalVal.textContent = this.goal.toLocaleString();
     }
 
     const remaining = Math.max(0, this.goal - this.steps);
@@ -310,7 +371,7 @@ export class StepCounter {
       if (remaining === 0) {
         countdownText.innerHTML = `<span class="goal-met-badge">🎉 Goal Met! (${pct}%)</span>`;
       } else {
-        countdownText.innerHTML = `<span class="countdown-num">${remaining.toLocaleString()}</span> left (${pct}%)`;
+        countdownText.innerHTML = `<span class="countdown-num">${remaining.toLocaleString()}</span> left (${pct}%) • Goal: ${this.goal.toLocaleString()}`;
       }
     }
 
@@ -318,20 +379,12 @@ export class StepCounter {
       progressBar.style.width = `${pct}%`;
     }
 
-    if (statusCard) {
-      statusCard.classList.toggle('is-tracking', this.isListening);
-    }
-
-    if (statusDot) {
-      statusDot.textContent = this.isListening ? '🟢' : '⏸️';
+    if (sensorBtn) {
+      sensorBtn.classList.toggle('is-active', this.isListening);
     }
 
     if (statusText) {
-      statusText.textContent = this.isListening ? 'ACTIVE' : 'PAUSED';
-    }
-
-    if (statusSub) {
-      statusSub.textContent = this.isListening ? 'Auto-tracking' : 'Tap to start';
+      statusText.textContent = this.isListening ? 'ON' : 'OFF';
     }
   }
 }

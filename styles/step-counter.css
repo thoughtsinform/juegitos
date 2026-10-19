@@ -1,16 +1,13 @@
-/* Juegitos - Step Counter Banner (Professional Segmented Deck) */
+/* Juegitos - Step Counter Banner (Asymmetric Master-Dock Architecture) */
 
 .step-counter-bar {
   width: 100%;
-  background: #03200c; /* Solid deep felt color, seamlessly blends behind iOS status bar */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  padding-top: max(env(safe-area-inset-top, 0px), 8px);
-  padding-bottom: 7px;
-  padding-left: 10px;
-  padding-right: 10px;
+  background: #03200c; /* Deep emerald base seamlessly running behind iOS status bar */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding: max(env(safe-area-inset-top, 0px), 6px) 12px 8px 12px;
   position: relative;
   z-index: 100;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   transition: background 0.3s ease;
 }
 
@@ -24,115 +21,89 @@
   100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.85); }
 }
 
-/* Unified Deck of 4 matching tool cards */
-.step-deck {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-  width: 100%;
-}
-
-.step-card {
-  height: 42px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
+/* Master Dock Layout: Hero Metric (Left) + Action Cluster (Right) */
+.step-dock-v2 {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
+  gap: 8px;
+  width: 100%;
+  height: 44px; /* Strict 44px touch target height */
+}
+
+/* Left Hero Section: High Outdoor Contrast & Large Telemetry */
+.dock-hero-card {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
   color: #ffffff;
   cursor: pointer;
   text-align: left;
   position: relative;
   overflow: hidden;
   font-family: inherit;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
-.step-card:active {
-  transform: scale(0.97);
-  background: rgba(255, 255, 255, 0.12);
+.dock-hero-card:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.15);
 }
 
-/* Card Proportions */
-.card-steps {
-  flex: 1.25;
-  min-width: 0;
-  cursor: default;
-}
-
-.card-goal {
-  flex: 1;
-  min-width: 0;
-}
-
-.card-status {
-  flex: 1;
-  min-width: 0;
-}
-
-.card-add {
-  flex: 0.75;
-  min-width: 0;
-}
-
-/* Card Internal Layout */
-.card-icon {
-  font-size: 1.15rem;
+.dock-icon-ring {
+  font-size: 1.3rem;
   line-height: 1;
   flex-shrink: 0;
 }
 
-.card-content {
+.dock-hero-data {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-width: 0;
-  flex: 1;
 }
 
-.card-head {
+.dock-val-row {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 5px;
   line-height: 1.1;
   white-space: nowrap;
 }
 
-.card-val {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.2px;
+.dock-val {
+  font-size: 1.12rem; /* Large outdoor legible value */
+  font-weight: 800;
+  color: #34d399; /* Vibrant Mint */
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
 }
 
-.card-label {
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.6px;
-  color: rgba(255, 255, 255, 0.55);
-  text-transform: uppercase;
+.dock-unit {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.8px;
 }
 
-.card-sub {
-  font-size: 0.66rem;
-  color: rgba(255, 255, 255, 0.75);
+.dock-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-/* Dynamic State Colors */
-.card-steps .card-val {
-  color: #34d399; /* Crisp mint green */
 }
 
 .countdown-num {
   color: #fbbf24; /* Amber */
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .goal-met-badge {
@@ -140,40 +111,79 @@
   font-weight: 700;
 }
 
-.card-goal:hover {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.4);
-}
-
-.card-status.is-tracking {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.45);
-}
-
-.card-status.is-tracking .card-val {
-  color: #34d399;
-}
-
-.status-dot {
-  display: inline-block;
+.dock-chevron-indicator {
   font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
 }
 
-.card-status.is-tracking .status-dot {
+/* Right Action Buttons Cluster */
+.dock-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dock-pill-btn {
+  height: 44px;
+  min-width: 54px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.dock-pill-btn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.add-btn {
+  color: #cbd5e1;
+}
+
+.add-btn .pill-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Sensor state styling */
+.sensor-btn.is-active {
+  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.status-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.sensor-btn.is-active .status-pulse-dot {
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
   animation: pulseDot 1.8s infinite ease-in-out;
 }
 
 @keyframes pulseDot {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.2); opacity: 0.6; }
-}
-
-.card-add {
-  color: #cbd5e1;
-}
-
-.card-add .card-val {
-  color: #94a3b8;
 }
 
 /* Global Progress Track at bottom edge of banner */
@@ -193,17 +203,169 @@
   transition: width 0.4s ease;
 }
 
+/* Floating Step Micro-Interaction Badge */
+.floating-step-badge {
+  position: fixed;
+  color: #fbbf24;
+  font-weight: 800;
+  font-size: 1.05rem;
+  pointer-events: none;
+  z-index: 9999;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  animation: floatUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes floatUpFade {
+  0% { transform: translateY(0) scale(0.8); opacity: 1; }
+  100% { transform: translateY(-38px) scale(1.15); opacity: 0; }
+}
+
+/* Goal Selection Modal / Sheet */
+.goal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10001;
+  padding: 0 0 env(safe-area-inset-bottom, 10px) 0;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.goal-modal-sheet {
+  background: #0f3d1f;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px 24px 16px 16px;
+  width: 100%;
+  max-width: 420px;
+  padding: 20px 20px 24px 20px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+  animation: slideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.goal-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.goal-sheet-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.goal-sheet-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.goal-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.goal-chip {
+  padding: 10px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.goal-chip.active {
+  background: #f59e0b;
+  color: #1a1a1a;
+  border-color: #f59e0b;
+}
+
+.goal-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 6px 12px;
+  margin-bottom: 18px;
+}
+
+.stepper-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stepper-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #34d399;
+  letter-spacing: -0.5px;
+}
+
+.goal-save-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
 /* Landscape Tweaks */
 @media (orientation: landscape) {
   .step-counter-bar {
     padding-top: max(env(safe-area-inset-top, 0px), 4px);
     padding-bottom: 4px;
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
-  .step-card {
+  .step-dock-v2 {
     height: 38px;
-    padding: 2px 10px;
+  }
+
+  .dock-pill-btn {
+    height: 38px;
   }
 }
