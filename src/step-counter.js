@@ -1,7 +1,7 @@
 /**
- * Walking Step Counter & Goal Countdown
- * Uses HTML5 DeviceMotionEvent accelerometer + low-pass filter + peak detection.
- * Persists session steps, goals, and automatic tracking permissions.
+ * Walking Step Counter & Pedometer Module
+ * Designed for Ellen & Susan to track walking steps while playing Jueguitos.
+ * Uses pure SVG iconography (zero emojis) and integrates with the active game theme.
  */
 
 import { sound } from './sound.js';
@@ -11,277 +11,316 @@ export class StepCounter {
   constructor(options = {}) {
     this.user = options.user || 'Ellen';
     this.container = options.container;
-    
-    // Load persisted state
-    this.goal = this.loadStoredGoal();
-    this.steps = this.loadStoredSteps();
-    this.isListening = false;
-    this.goalCelebrated = false;
+    this.steps = 0;
+    this.goal = 5000;
+    this.goalCelebratedToday = false;
+    this.sensorActive = false;
+    this.permissionState = 'unknown'; // 'unknown' | 'granted' | 'denied' | 'unsupported'
 
-    // Accelerometer filter state
-    this.lastAccMag = 9.8;
-    this.filteredMag = 9.8;
+    // Pedometer DSP state
     this.lastStepTime = 0;
-    this.threshold = 1.35; // Acceleration spike above gravity to trigger step
-    this.minStepInterval = 280; // Minimum ms between human walking steps
+    this.stepCooldownMs = 330; // Max ~3 steps/sec (prevents shake spam)
+    this.accelThreshold = 11.6; // Magnitude peak threshold (Earth gravity ~9.8 m/s^2)
+    this.inPeak = false;
+    this.smoothMag = 9.8;
 
-    this.onMotion = this.onMotion.bind(this);
+    this.handleMotion = this.handleMotion.bind(this);
+    this.loadState();
     this.render();
-    this.initAutoTracking();
+    this.autoStartMotionIfPossible();
   }
 
-  setUser(user) {
-    this.user = user;
-    this.goal = this.loadStoredGoal();
-    this.steps = this.loadStoredSteps();
-    this.goalCelebrated = false;
-    this.updateDisplay();
+  getTodayKey() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
   }
 
-  loadStoredGoal() {
+  getStorageKey() {
+    return `juegitos_steps_${this.user}_${this.getTodayKey()}`;
+  }
+
+  getGoalStorageKey() {
+    return `juegitos_goal_${this.user}`;
+  }
+
+  getMotionPrefKey() {
+    return `juegitos_motion_enabled`;
+  }
+
+  loadState() {
     try {
-      const g = localStorage.getItem(`juegitos_step_goal_${this.user}`);
-      return g ? parseInt(g, 10) : 3000;
-    } catch (e) {
-      return 3000;
-    }
-  }
+      const savedGoal = localStorage.getItem(this.getGoalStorageKey());
+      if (savedGoal) {
+        const parsedGoal = parseInt(savedGoal, 10);
+        if (!isNaN(parsedGoal) && parsedGoal >= 500) {
+          this.goal = parsedGoal;
+        }
+      }
 
-  loadStoredSteps() {
-    try {
-      const s = localStorage.getItem(`juegitos_step_count_${this.user}`);
-      return s ? parseInt(s, 10) : 0;
+      const savedToday = localStorage.getItem(this.getStorageKey());
+      if (savedToday) {
+        const parsed = JSON.parse(savedToday);
+        this.steps = parsed.steps || 0;
+        this.goalCelebratedToday = !!parsed.goalCelebratedToday;
+      } else {
+        this.steps = 0;
+        this.goalCelebratedToday = false;
+      }
     } catch (e) {
-      return 0;
+      this.steps = 0;
     }
   }
 
   saveState() {
     try {
-      localStorage.setItem(`juegitos_step_goal_${this.user}`, this.goal.toString());
-      localStorage.setItem(`juegitos_step_count_${this.user}`, this.steps.toString());
-    } catch (e) {
-      console.warn('Could not persist steps', e);
-    }
+      localStorage.setItem(this.getGoalStorageKey(), String(this.goal));
+      localStorage.setItem(
+        this.getStorageKey(),
+        JSON.stringify({
+          steps: this.steps,
+          goalCelebratedToday: this.goalCelebratedToday,
+          updatedAt: Date.now()
+        })
+      );
+    } catch (e) {}
   }
 
-  triggerHaptic(type = 'light') {
-    if ('vibrate' in navigator) {
-      try {
-        if (type === 'light') navigator.vibrate(12);
-        else if (type === 'medium') navigator.vibrate([18, 30, 18]);
-        else if (type === 'celebrate') navigator.vibrate([50, 80, 50, 80, 150]);
-      } catch (e) {}
-    }
+  setUser(username) {
+    this.user = username;
+    this.loadState();
+    this.updateUI();
   }
 
-  /**
-   * Automatic permission & auto-start tracking
-   */
-  initAutoTracking() {
-    const isGranted = localStorage.getItem('juegitos_motion_permission') === 'granted';
+  autoStartMotionIfPossible() {
+    if (typeof window === 'undefined') return;
 
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
-      this.startListening();
+    if (!('DeviceMotionEvent' in window)) {
+      this.permissionState = 'unsupported';
+      this.updateUI();
       return;
     }
 
-    if (isGranted) {
-      this.startListening();
+    if (typeof DeviceMotionEvent.requestPermission !== 'function') {
+      this.startMotionListener();
+      return;
     }
 
-    // Attach silent, automatic user gesture listener for iOS
-    const onUserInteraction = async () => {
-      window.removeEventListener('pointerdown', onUserInteraction);
-      window.removeEventListener('touchstart', onUserInteraction);
-      window.removeEventListener('click', onUserInteraction);
-      await this.requestAndStart();
+    const bindAutoUnlock = () => {
+      const unlockHandler = async () => {
+        window.removeEventListener('touchend', unlockHandler);
+        window.removeEventListener('click', unlockHandler);
+        await this.requestAndStart();
+      };
+      window.addEventListener('touchend', unlockHandler, { once: true });
+      window.addEventListener('click', unlockHandler, { once: true });
     };
 
-    window.addEventListener('pointerdown', onUserInteraction, { once: true, passive: true });
-    window.addEventListener('touchstart', onUserInteraction, { once: true, passive: true });
-    window.addEventListener('click', onUserInteraction, { once: true, passive: true });
+    bindAutoUnlock();
   }
 
   async requestAndStart() {
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    if (typeof window === 'undefined' || !('DeviceMotionEvent' in window)) {
+      this.permissionState = 'unsupported';
+      this.updateUI();
+      return false;
+    }
+
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
       try {
         const response = await DeviceMotionEvent.requestPermission();
         if (response === 'granted') {
-          localStorage.setItem('juegitos_motion_permission', 'granted');
-          this.startListening();
+          this.startMotionListener();
           return true;
+        } else {
+          this.permissionState = 'denied';
+          this.updateUI();
+          return false;
         }
       } catch (err) {
-        console.warn('Error requesting device motion permission:', err);
+        this.permissionState = 'unknown';
+        this.updateUI();
+        return false;
       }
     } else {
-      this.startListening();
+      this.startMotionListener();
       return true;
     }
-    return false;
   }
 
-  startListening() {
-    if (!this.isListening && window.DeviceMotionEvent) {
-      window.addEventListener('devicemotion', this.onMotion, { passive: true });
-      this.isListening = true;
-      this.updateDisplay();
-    }
+  startMotionListener() {
+    if (this.sensorActive) return;
+    window.addEventListener('devicemotion', this.handleMotion, { passive: true });
+    this.sensorActive = true;
+    this.permissionState = 'granted';
+    try {
+      localStorage.setItem(this.getMotionPrefKey(), 'true');
+    } catch (e) {}
+    this.updateUI();
   }
 
-  stopListening() {
-    if (this.isListening) {
-      window.removeEventListener('devicemotion', this.onMotion);
-      this.isListening = false;
-      this.updateDisplay();
-    }
-  }
-
-  toggleTracking() {
-    this.triggerHaptic('light');
-    if (this.isListening) {
-      this.stopListening();
-    } else {
-      this.requestAndStart();
-    }
-  }
-
-  onMotion(event) {
-    const acc = event.accelerationIncludingGravity || event.acceleration;
+  handleMotion(event) {
+    const acc = event.accelerationIncludingGravity;
     if (!acc || acc.x === null) return;
 
-    const x = acc.x || 0;
-    const y = acc.y || 0;
-    const z = acc.z || 0;
+    const mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+    this.smoothMag = 0.7 * this.smoothMag + 0.3 * mag;
+    const now = performance.now();
 
-    const rawMag = Math.sqrt(x * x + y * y + z * z);
-    const now = Date.now();
-
-    const alpha = 0.8;
-    this.filteredMag = alpha * this.filteredMag + (1 - alpha) * rawMag;
-    const delta = Math.abs(rawMag - this.filteredMag);
-
-    if (delta > this.threshold && (now - this.lastStepTime) > this.minStepInterval) {
-      this.lastStepTime = now;
-      this.addSteps(1);
+    if (this.smoothMag > this.accelThreshold && !this.inPeak) {
+      if (now - this.lastStepTime > this.stepCooldownMs) {
+        this.inPeak = true;
+        this.lastStepTime = now;
+        this.incrementSteps(1);
+      }
+    } else if (this.smoothMag < 10.2) {
+      this.inPeak = false;
     }
   }
 
-  addSteps(count = 1) {
-    this.steps += count;
-    this.saveState();
-    this.updateDisplay();
-
-    if (this.steps >= this.goal && !this.goalCelebrated) {
-      this.goalCelebrated = true;
-      sound.playStepGoalMet();
-      this.triggerHaptic('celebrate');
-      this.triggerGoalCelebration();
+  incrementSteps(amount = 1, sourceBtn = null) {
+    this.steps += amount;
+    if (amount >= 50) {
+      sound.playPop(1.1);
+      if (sourceBtn) {
+        this.spawnFloatingPlus(sourceBtn, `+${amount}`);
+      }
     }
+
+    if (this.steps >= this.goal && !this.goalCelebratedToday) {
+      this.goalCelebratedToday = true;
+      sound.playStepGoalMet();
+      this.triggerCelebrationBanner();
+    }
+
+    this.saveState();
+    this.updateUI();
+  }
+
+  spawnFloatingPlus(btnEl, text) {
+    const rect = btnEl.getBoundingClientRect();
+    const floatEl = document.createElement('span');
+    floatEl.className = 'floating-step-badge';
+    floatEl.textContent = text;
+    floatEl.style.left = `${rect.left + rect.width / 2 - 20}px`;
+    floatEl.style.top = `${rect.top - 6}px`;
+    document.body.appendChild(floatEl);
+    setTimeout(() => floatEl.remove(), 800);
   }
 
   setGoal(newGoal) {
-    const val = parseInt(newGoal, 10);
-    if (!isNaN(val) && val > 0) {
-      this.goal = val;
-      this.goalCelebrated = this.steps >= this.goal;
+    const parsed = parseInt(newGoal, 10);
+    if (!isNaN(parsed) && parsed >= 500 && parsed <= 100000) {
+      this.goal = parsed;
+      if (this.steps < this.goal) {
+        this.goalCelebratedToday = false;
+      }
       this.saveState();
-      this.updateDisplay();
+      this.updateUI();
     }
   }
 
-  triggerGoalCelebration() {
-    const banner = this.container?.querySelector('.step-counter-bar');
-    if (banner) {
-      banner.classList.add('goal-reached');
-      setTimeout(() => banner.classList.remove('goal-reached'), 3000);
+  triggerCelebrationBanner() {
+    const bar = this.container?.querySelector('.step-counter-bar');
+    if (bar) {
+      bar.classList.add('goal-reached');
+      setTimeout(() => bar.classList.remove('goal-reached'), 5000);
     }
   }
 
-  spawnFloatingBadge(x, y, text = '+100 Steps!') {
-    const badge = document.createElement('div');
-    badge.className = 'floating-step-badge';
-    badge.textContent = text;
-    badge.style.left = `${x - 40}px`;
-    badge.style.top = `${y - 15}px`;
-    document.body.appendChild(badge);
-    setTimeout(() => badge.remove(), 850);
-  }
+  openGoalModal() {
+    const existing = document.getElementById('stepGoalModal');
+    if (existing) existing.remove();
 
-  openGoalSheet() {
-    this.triggerHaptic('light');
-    let tempGoal = this.goal;
+    sound.playCardSlide();
 
-    const overlay = document.createElement('div');
-    overlay.className = 'goal-modal-overlay';
-    overlay.innerHTML = `
-      <div class="goal-modal-sheet">
+    const presets = [3000, 5000, 7500, 10000];
+    const modal = document.createElement('div');
+    modal.id = 'stepGoalModal';
+    modal.className = 'goal-modal-overlay';
+
+    const pct = Math.min(100, Math.round((this.steps / this.goal) * 100));
+    const remaining = Math.max(0, this.goal - this.steps);
+
+    modal.innerHTML = `
+      <div class="goal-modal-sheet" role="dialog" aria-label="Step Counter Settings">
         <div class="goal-sheet-header">
-          <span class="goal-sheet-title">${Icons.target('sheet-target-icon', 20)} Set Walking Step Goal</span>
-          <button class="goal-sheet-close" id="goalSheetCloseBtn" aria-label="Close">${Icons.close('', 16)}</button>
+          <div class="goal-sheet-title">${Icons.sneaker('sheet-title-ico', 20)} <span>Daily Walk Goal</span></div>
+          <button type="button" class="goal-sheet-close" id="closeGoalModalBtn" aria-label="Close">${Icons.close('', 18)}</button>
         </div>
 
+        <div class="goal-sheet-summary">
+          <div class="summary-stat">
+            <span class="summary-val">${this.steps.toLocaleString()}</span>
+            <span class="summary-lbl">Steps Today (${pct}%)</span>
+          </div>
+          <div class="summary-stat">
+            <span class="summary-val">${remaining > 0 ? remaining.toLocaleString() : 'Goal Met!'}</span>
+            <span class="summary-lbl">Remaining</span>
+          </div>
+        </div>
+
+        <div class="goal-sheet-section-lbl">Quick Select Target</div>
         <div class="goal-chips-grid">
-          <button class="goal-chip ${tempGoal === 1000 ? 'active' : ''}" data-val="1000">1,000</button>
-          <button class="goal-chip ${tempGoal === 3000 ? 'active' : ''}" data-val="3000">3,000</button>
-          <button class="goal-chip ${tempGoal === 5000 ? 'active' : ''}" data-val="5000">5,000</button>
-          <button class="goal-chip ${tempGoal === 10000 ? 'active' : ''}" data-val="10000">10,000</button>
+          ${presets.map(p => `
+            <button type="button" class="goal-chip ${this.goal === p ? 'active' : ''}" data-goal="${p}">
+              ${p.toLocaleString()}
+            </button>
+          `).join('')}
         </div>
 
+        <div class="goal-sheet-section-lbl">Custom Step Target</div>
         <div class="goal-stepper">
-          <button class="stepper-btn" id="stepperMinusBtn">−</button>
-          <span class="stepper-val" id="stepperValText">${tempGoal.toLocaleString()}</span>
-          <button class="stepper-btn" id="stepperPlusBtn">+</button>
+          <button type="button" class="stepper-btn" id="goalMinusBtn" aria-label="Decrease by 500">-500</button>
+          <span class="stepper-val" id="goalModalVal">${this.goal.toLocaleString()}</span>
+          <button type="button" class="stepper-btn" id="goalPlusBtn" aria-label="Increase by 500">+500</button>
         </div>
 
-        <button class="goal-save-btn" id="goalSaveBtn">Set Goal</button>
+        <button type="button" class="goal-save-btn" id="saveGoalModalBtn">Save Goal</button>
       </div>
     `;
 
-    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
 
-    const valText = overlay.querySelector('#stepperValText');
-    const chips = overlay.querySelectorAll('.goal-chip');
-
+    let tempGoal = this.goal;
+    const valEl = modal.querySelector('#goalModalVal');
     const updateModalDisplay = () => {
-      if (valText) valText.textContent = tempGoal.toLocaleString();
-      chips.forEach(c => {
-        c.classList.toggle('active', parseInt(c.dataset.val, 10) === tempGoal);
+      if (valEl) valEl.textContent = tempGoal.toLocaleString();
+      modal.querySelectorAll('.goal-chip').forEach(chip => {
+        chip.classList.toggle('active', parseInt(chip.dataset.goal, 10) === tempGoal);
       });
     };
 
-    chips.forEach(c => {
-      c.addEventListener('click', () => {
-        this.triggerHaptic('light');
-        tempGoal = parseInt(c.dataset.val, 10);
+    modal.querySelectorAll('.goal-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        sound.playCardSlide();
+        tempGoal = parseInt(chip.dataset.goal, 10);
         updateModalDisplay();
       });
     });
 
-    overlay.querySelector('#stepperMinusBtn')?.addEventListener('click', () => {
-      this.triggerHaptic('light');
+    modal.querySelector('#goalMinusBtn')?.addEventListener('click', () => {
+      sound.playCardSlide();
       tempGoal = Math.max(500, tempGoal - 500);
       updateModalDisplay();
     });
 
-    overlay.querySelector('#stepperPlusBtn')?.addEventListener('click', () => {
-      this.triggerHaptic('light');
-      tempGoal = Math.min(50000, tempGoal + 500);
+    modal.querySelector('#goalPlusBtn')?.addEventListener('click', () => {
+      sound.playCardSlide();
+      tempGoal = Math.min(100000, tempGoal + 500);
       updateModalDisplay();
     });
 
-    const closeModal = () => {
-      overlay.remove();
-    };
-
-    overlay.querySelector('#goalSheetCloseBtn')?.addEventListener('click', closeModal);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal();
+    const closeModal = () => modal.remove();
+    modal.querySelector('#closeGoalModalBtn')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
     });
 
-    overlay.querySelector('#goalSaveBtn')?.addEventListener('click', () => {
-      this.triggerHaptic('medium');
+    modal.querySelector('#saveGoalModalBtn')?.addEventListener('click', () => {
+      sound.playCardSnap();
       this.setGoal(tempGoal);
       closeModal();
     });
@@ -291,101 +330,106 @@ export class StepCounter {
     if (!this.container) return;
 
     this.container.innerHTML = `
-      <div class="step-counter-bar" id="stepCounterBar">
+      <div class="step-counter-bar" role="region" aria-label="Walking Step Counter">
         <div class="step-dock-v2">
-          <!-- Left Hero Card: Live Steps + Remaining + Progress -->
-          <button type="button" class="dock-hero-card" id="stepGoalTrigger" aria-label="Step progress. Tap to adjust goal">
-            <div class="dock-icon-ring">
-              <span class="dock-emoji">👟</span>
-            </div>
+          <!-- Left Hero Card: Steps + Goal Progress (Tap to open Goal Sheet) -->
+          <button type="button" class="dock-hero-card" id="stepHeroGoalBtn" title="Tap to adjust daily step goal">
+            <div class="dock-icon-ring">${Icons.sneaker('hero-sneaker-svg', 20)}</div>
             <div class="dock-hero-data">
               <div class="dock-val-row">
-                <span class="dock-val" id="stepLiveVal">${this.steps.toLocaleString()}</span>
+                <span class="dock-val" id="stepCountValue">0</span>
                 <span class="dock-unit">STEPS</span>
               </div>
-              <div class="dock-sub" id="stepCountdownText"></div>
+              <div class="dock-sub" id="stepRemainingText">5,000 to go</div>
             </div>
-            <span class="dock-chevron-indicator">🎯</span>
+            <div class="dock-chevron-indicator" aria-hidden="true">${Icons.target('hero-target-svg', 16)}</div>
           </button>
 
-          <!-- Right Action Cluster: 44px minimum touch targets -->
+          <!-- Right Compact Action Pills -->
           <div class="dock-actions">
-            <!-- Manual +100 Quick Add with Floating Particle -->
-            <button type="button" class="dock-pill-btn add-btn" id="manualAddBtn" aria-label="Add 100 steps">
-              <span class="pill-icon">➕</span>
+            <!-- Manual +100 Step Increment -->
+            <button type="button" class="dock-pill-btn add-btn" id="addManualStepsBtn" title="Add 100 steps manually">
+              <span class="pill-icon">${Icons.plus('add-plus-svg', 14)}</span>
               <span class="pill-text">100</span>
             </button>
 
-            <!-- Sensor State Toggle -->
-            <button type="button" class="dock-pill-btn sensor-btn ${this.isListening ? 'is-active' : ''}" id="toggleSensorBtn" aria-label="Toggle motion tracking">
-              <span class="status-pulse-dot" id="statusDot"></span>
-              <span class="pill-text" id="statusText">${this.isListening ? 'ON' : 'OFF'}</span>
+            <!-- Motion Sensor Status / Toggle Pill -->
+            <button type="button" class="dock-pill-btn sensor-btn" id="enableMotionBtn" title="Motion Pedometer Status">
+              <span class="status-pulse-dot" id="motionDot"></span>
+              <span class="pill-text" id="motionStatusText">Auto</span>
             </button>
           </div>
         </div>
 
-        <!-- Sleek Global Progress Bar along bottom edge of banner -->
+        <!-- Global Full-Width Bottom Progress Track -->
         <div class="step-banner-progress-track">
-          <div class="step-banner-progress-fill" id="stepProgressBar"></div>
+          <div class="step-banner-progress-fill" id="stepProgressFill"></div>
         </div>
       </div>
     `;
 
-    // Wire Goal Sheet trigger
-    this.container.querySelector('#stepGoalTrigger')?.addEventListener('click', () => {
-      this.openGoalSheet();
+    const heroBtn = this.container.querySelector('#stepHeroGoalBtn');
+    const addStepsBtn = this.container.querySelector('#addManualStepsBtn');
+    const motionBtn = this.container.querySelector('#enableMotionBtn');
+
+    heroBtn?.addEventListener('click', () => {
+      this.openGoalModal();
     });
 
-    // Wire Sensor toggle
-    this.container.querySelector('#toggleSensorBtn')?.addEventListener('click', () => {
-      this.toggleTracking();
+    addStepsBtn?.addEventListener('click', () => {
+      this.incrementSteps(100, addStepsBtn);
     });
 
-    // Wire Manual Add with floating particle
-    const manualBtn = this.container.querySelector('#manualAddBtn');
-    manualBtn?.addEventListener('click', (e) => {
-      sound.playCardSlide();
-      this.triggerHaptic('light');
-      const rect = manualBtn.getBoundingClientRect();
-      this.spawnFloatingBadge(rect.left + rect.width / 2, rect.top, '+100 Steps!');
-      this.addSteps(100);
+    motionBtn?.addEventListener('click', async () => {
+      if (!this.sensorActive) {
+        await this.requestAndStart();
+      } else {
+        this.incrementSteps(1);
+      }
     });
 
-    this.updateDisplay();
+    this.updateUI();
   }
 
-  updateDisplay() {
-    const liveVal = this.container?.querySelector('#stepLiveVal');
-    const countdownText = this.container?.querySelector('#stepCountdownText');
-    const progressBar = this.container?.querySelector('#stepProgressBar');
-    const sensorBtn = this.container?.querySelector('.sensor-btn');
-    const statusText = this.container?.querySelector('#statusText');
+  updateUI() {
+    if (!this.container) return;
 
-    if (liveVal) {
-      liveVal.textContent = this.steps.toLocaleString();
-    }
+    const countEl = this.container.querySelector('#stepCountValue');
+    const remEl = this.container.querySelector('#stepRemainingText');
+    const fillEl = this.container.querySelector('#stepProgressFill');
+    const motionBtn = this.container.querySelector('#enableMotionBtn');
+    const motionText = this.container.querySelector('#motionStatusText');
+
+    if (countEl) countEl.textContent = this.steps.toLocaleString();
 
     const remaining = Math.max(0, this.goal - this.steps);
-    const pct = Math.min(100, Math.round((this.steps / this.goal) * 100));
-
-    if (countdownText) {
+    if (remEl) {
       if (remaining === 0) {
-        countdownText.innerHTML = `<span class="goal-met-badge">🎉 Goal Met! (${pct}%)</span>`;
+        remEl.innerHTML = `<span class="goal-met-badge">${Icons.awardStar('goal-star-inline', 14)} Goal Met! (${this.goal.toLocaleString()})</span>`;
       } else {
-        countdownText.innerHTML = `<span class="countdown-num">${remaining.toLocaleString()}</span> left (${pct}%) • Goal: ${this.goal.toLocaleString()}`;
+        remEl.innerHTML = `<span class="countdown-num">${remaining.toLocaleString()}</span> to ${this.goal.toLocaleString()}`;
       }
     }
 
-    if (progressBar) {
-      progressBar.style.width = `${pct}%`;
+    const pct = Math.min(100, Math.round((this.steps / this.goal) * 100));
+    if (fillEl) {
+      fillEl.style.width = `${pct}%`;
     }
 
-    if (sensorBtn) {
-      sensorBtn.classList.toggle('is-active', this.isListening);
-    }
-
-    if (statusText) {
-      statusText.textContent = this.isListening ? 'ON' : 'OFF';
+    if (motionBtn && motionText) {
+      if (this.sensorActive) {
+        motionBtn.classList.add('is-active');
+        motionText.textContent = 'Walk ON';
+      } else if (this.permissionState === 'unsupported') {
+        motionBtn.classList.remove('is-active');
+        motionText.textContent = 'Manual';
+      } else if (this.permissionState === 'denied') {
+        motionBtn.classList.remove('is-active');
+        motionText.textContent = 'Blocked';
+      } else {
+        motionBtn.classList.remove('is-active');
+        motionText.textContent = 'Walk';
+      }
     }
   }
 }

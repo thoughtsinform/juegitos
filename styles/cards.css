@@ -1,68 +1,97 @@
-/* Juegitos - Card Styles & SVGs */
+/* ========================================================
+   Jueguitos - Studio Playing Card Styles & Animations
+   Features warm linen card stock, unclipped horizontal top strip index,
+   multi-pip coordinate layouts, and gilded court frames.
+======================================================== */
 
 .solitaire-card {
   position: absolute;
   width: 100%;
   max-width: var(--card-width);
   height: var(--card-height);
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, top 0.18s ease;
   user-select: none;
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 .solitaire-card.can-move:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.04);
+}
+
+.solitaire-card.is-blocked-sequence .card-face {
+  background: linear-gradient(180deg, #f3efe6 0%, #e5dec9 100%);
 }
 
 .solitaire-card.selected-glow {
-  transform: translateY(-8px);
-  box-shadow: 0 0 12px 3px rgba(245, 158, 11, 0.9), 0 8px 16px rgba(0, 0, 0, 0.5);
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 2.5px #fbbf24, 0 10px 20px rgba(0, 0, 0, 0.55);
   z-index: 999 !important;
 }
 
-.solitaire-card.hint-glow {
-  animation: hintPulse 0.8s ease-in-out infinite alternate;
+.solitaire-card.hint-glow,
+.stock-area.hint-glow {
+  animation: hintPulse 0.75s ease-in-out infinite alternate;
 }
 
 @keyframes hintPulse {
   from {
-    box-shadow: 0 0 6px 2px #f59e0b;
+    box-shadow: 0 0 6px 2px #fbbf24;
     transform: scale(1);
   }
   to {
-    box-shadow: 0 0 16px 5px #f59e0b;
+    box-shadow: 0 0 18px 5px #fbbf24;
     transform: scale(1.04);
   }
 }
 
-.solitaire-card.is-dragging {
-  opacity: 0.6;
-  transform: scale(1.06);
-  z-index: 1000 !important;
+.solitaire-card.card-shake {
+  animation: cardShakeAnim 0.28s ease-in-out;
+}
+
+@keyframes cardShakeAnim {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.solitaire-card.deal-fly-in {
+  animation: dealCardIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes dealCardIn {
+  from {
+    transform: translate(60px, -90px) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* ========================================================
-   CARD BACKS (Burgundy Spider & Pinstripes)
+   CARD BACKS (Royal Burgundy & Gold Filigree)
 ======================================================== */
 .card-back {
   width: 100%;
   height: 100%;
-  border-radius: 6px;
-  background-color: #7a111a; /* Burgundy/Maroon as in screenshot */
-  padding: 3px;
+  border-radius: 7px;
+  background: linear-gradient(145deg, #881320 0%, #5c0912 100%);
+  padding: 2.5px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .card-back-border {
   width: 100%;
   height: 100%;
-  border: 1.5px solid #ffffff;
-  border-radius: 4px;
+  border: 1.5px solid #fde68a;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,96 +99,128 @@
   overflow: hidden;
 }
 
-/* Stock Pile: Centered White Spider */
 .stock-card-back .spider-emblem {
-  width: 60%;
-  height: 60%;
+  width: 64%;
+  height: 64%;
 }
 
-/* Tableau: Horizontal White Pinstripes */
 .tableau-card-back .pinstripe-bg {
   background: repeating-linear-gradient(
     0deg,
     #7a111a,
     #7a111a 3px,
-    rgba(255, 255, 255, 0.9) 3px,
-    rgba(255, 255, 255, 0.9) 4.5px
+    rgba(253, 230, 138, 0.78) 3px,
+    rgba(253, 230, 138, 0.78) 4.5px
   );
 }
 
 /* ========================================================
-   CARD FACES
+   CARD FACES (Warm Ivory Card Stock & Horizontal Strip Index)
 ======================================================== */
 .card-face {
   width: 100%;
   height: 100%;
-  border-radius: 6px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 7px;
+  background: linear-gradient(180deg, #fffdf9 0%, #f5efe2 100%);
+  border: 1px solid #cfc6b4;
+  box-shadow: inset 0 1px 0 #ffffff, 0 2px 0 #c4b9a5;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 3px 4px;
+  padding: 2px 3.5px;
   position: relative;
   overflow: hidden;
 }
 
 .card-face.card-red {
-  color: #dc2626;
+  color: #d91b24;
 }
 
 .card-face.card-black {
-  color: #1e1e1e;
+  color: #14171f;
 }
 
-.card-corner {
+/* Horizontal Top Strip: Both Rank and Suit sit in the top 18px so they NEVER clip in stacks! */
+.card-header-strip {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   line-height: 1;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  z-index: 3;
+}
+
+.card-footer-strip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  line-height: 1;
+  transform: rotate(180deg);
+  z-index: 3;
 }
 
 .card-rank {
-  font-size: clamp(0.75rem, 2.5vw, 1.05rem);
-  font-weight: 700;
-  margin-bottom: 1px;
+  font-family: Georgia, "Times New Roman", "Trebuchet MS", serif;
+  font-size: clamp(0.76rem, 2.5vw, 1.02rem);
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  line-height: 1;
 }
 
-.corner-bottom-right {
-  transform: rotate(180deg);
+.card-suit-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.card-suit-mini svg {
+  width: clamp(9px, 2.2vw, 13px);
+  height: clamp(9px, 2.2vw, 13px);
 }
 
 .card-center {
   position: absolute;
-  inset: 0;
+  inset: 14px 2px 12px 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  z-index: 2;
 }
 
+.pip-grid-svg,
 .royalty-art {
-  width: 75%;
-  height: 75%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+@media (orientation: portrait) {
+  .card-footer-strip {
+    display: none;
+  }
+  .card-center {
+    inset: 14px 1px 2px 1px;
+  }
 }
 
 /* ========================================================
    FOUNDATION & STOCK STACKS
 ======================================================== */
 .foundation-slot {
-  width: 100%;
-  max-width: var(--card-width);
+  width: var(--card-width);
   height: var(--card-height);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.12);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1.5px solid rgba(253, 224, 71, 0.28);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .foundation-spider-watermark {
@@ -172,13 +233,13 @@
   top: 0;
   width: var(--card-width);
   height: var(--card-height);
-  border-radius: 6px;
+  border-radius: 7px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  animation: foundationSweep 0.5s ease-out;
+  animation: foundationSweep 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes foundationSweep {
-  0% { transform: scale(1.2) translateY(-20px); }
+  0% { transform: scale(1.25) translateY(-18px); }
   100% { transform: scale(1) translateY(0); }
 }
 
@@ -187,8 +248,8 @@
   top: 0;
   width: var(--card-width);
   height: var(--card-height);
-  border-radius: 6px;
-  box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.35);
+  border-radius: 7px;
+  box-shadow: -2px 3px 6px rgba(0, 0, 0, 0.45);
   transition: transform 0.2s ease;
 }
 
@@ -199,11 +260,9 @@
 .empty-stock-placeholder {
   width: var(--card-width);
   height: var(--card-height);
-  border: 1.5px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 1.5rem;
 }

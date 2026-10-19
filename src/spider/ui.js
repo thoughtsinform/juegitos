@@ -1,12 +1,17 @@
 /**
- * Spider Solitaire UI Controller
- * Handles rendering, touch/mouse drag-and-drop, tap-to-move, animations,
- * hints, bottom drawer menu, and sound triggers.
+ * Spider Solitaire UI & DOM Controller
+ * Features:
+ * - Clean lifecycle management (destroy() removes timers and window listeners)
+ * - Smart whole-run tap-to-move + column destination tap support
+ * - Exact-deal Restart vs New Deal
+ * - Auto-Finish banner when all face-down cards are flipped
+ * - Non-blocking toast notifications & Victory Card Cascade canvas animation
  */
 
 import { CardRenderer } from './card-renderer.js';
 import { sound } from '../sound.js';
 import { Icons } from '../icons.js';
+import { showToast } from '../toast.js';
 
 export class SpiderUI {
   constructor(engine, container, options = {}) {
@@ -14,513 +19,643 @@ export class SpiderUI {
     this.container = container;
     this.onUserLogout = options.onUserLogout || (() => {});
     this.onUserSwitch = options.onUserSwitch || (() => {});
-    this.currentUser = options.currentUser || 'Ellen';
+    this.currentUser = options.currentUser || { displayName: 'Ellen', avatar: 'assets/avatars/ellen.png' };
 
-    this.selectedSequence = null; // For tap-to-move
-    this.draggedData = null; // For drag-and-drop
-    this.hintTimer = null;
+    this.selectedMove = null; // { colIdx, cardIdx }
+    this.drawerOpen = this.getDefaultDrawerState();
+    this.hudTimer = null;
+    this.cascadeRaf = null;
+    this.onResizeBound = this.handleOrientationResize.bind(this);
 
-    this.initDOM();
+    this.renderLayout();
     this.attachGlobalEvents();
-    this.render();
+    this.renderBoard();
   }
 
-  initDOM() {
+  destroy() {
+    if (this.hudTimer) {
+      clearInterval(this.hudTimer);
+      this.hudTimer = null;
+    }
+    if (this.cascadeRaf) {
+      cancelAnimationFrame(this.cascadeRaf);
+      this.cascadeRaf = null;
+    }
+    window.removeEventListener('resize', this.onResizeBound);
+  }
+
+  getDefaultDrawerState() {
+    if (typeof window === 'undefined') return false;
+    return window.innerHeight > window.innerWidth;
+  }
+
+  handleOrientationResize() {
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (!isPortrait && this.drawerOpen) {
+      this.setDrawerState(false);
+    } else if (isPortrait && !this.drawerOpen) {
+      this.setDrawerState(true);
+    }
+    this.renderTableau();
+  }
+
+  renderLayout() {
     this.container.innerHTML = `
-      <div class="spider-game-wrapper" id="spiderGameWrapper">
-        <!-- Top HUD (Stats) -->
+      <div class="spider-game-wrapper ${this.drawerOpen ? 'drawer-open' : ''}" id="spiderWrapper">
+        <!-- 1. Top HUD Bar: MOVES | TIME | SCORE -->
         <div class="spider-hud">
-          <div class="hud-item hud-moves">
+          <div class="hud-item">
             <span class="hud-label">MOVES</span>
-            <span class="hud-val" id="hudMovesVal">0</span>
+            <span class="hud-val" id="hudMoves">0</span>
           </div>
-          <div class="hud-item hud-time">
+          <div class="hud-item">
             <span class="hud-label">TIME</span>
-            <span class="hud-val" id="hudTimeVal">0:00</span>
+            <span class="hud-val" id="hudTime">00:00</span>
           </div>
-          <div class="hud-item hud-score">
+          <div class="hud-item">
             <span class="hud-label">SCORE</span>
-            <span class="hud-val" id="hudScoreVal">500</span>
+            <span class="hud-val" id="hudScore">500</span>
           </div>
         </div>
 
-        <!-- Upper Board: Foundation (left) and Stock Fan (right) -->
+        <!-- 2. Upper Board: Foundation (Left), Auto-Complete CTA (Center), Stock Pile (Right) -->
         <div class="spider-upper-board">
-          <div class="foundation-area" id="foundationArea">
-            <!-- Completed runs will stack here -->
-          </div>
-
-          <div class="stock-area" id="stockArea" title="Deal Cards">
-            <!-- 5-layer stock card fan -->
-          </div>
+          <div class="foundation-area" id="foundationArea" title="Completed King-to-Ace Runs"></div>
+          <div class="spider-center-cta" id="spiderCenterCta"></div>
+          <div class="stock-area" id="stockArea" title="Tap to deal 10 cards (1 per column)"></div>
         </div>
 
-        <!-- Tableau: 10 Columns -->
-        <div class="spider-tableau" id="spiderTableau">
-          ${Array.from({ length: 10 }, (_, i) => `<div class="tableau-column" data-col="${i}"></div>`).join('')}
+        <!-- 3. Main 10-Column Tableau -->
+        <div class="spider-tableau" id="tableauArea">
+          ${Array.from({ length: 10 }, (_, idx) => `
+            <div class="tableau-column" data-col="${idx}" id="col_${idx}"></div>
+          `).join('')}
         </div>
 
-        <!-- Bottom Chevron & Expandable Drawer -->
-        <div class="bottom-drawer-wrapper" id="bottomDrawerWrapper">
-          <button class="drawer-chevron-btn" id="drawerChevronBtn" aria-label="Toggle Menu">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="18 15 12 9 6 15"></polyline>
-            </svg>
+        <!-- 4. Bottom Collapsible Control Drawer -->
+        <div class="bottom-drawer-wrapper ${this.drawerOpen ? 'is-open' : ''}" id="bottomDrawer">
+          <button class="drawer-chevron-btn" id="drawerToggleBtn" aria-label="Toggle Game Menu" title="Controls & Settings">
+            ${Icons.chevronUp('drawer-chevron-svg', 18)}
           </button>
 
-          <div class="drawer-content" id="drawerContent">
-            <div class="drawer-row drawer-quick-actions">
+          <div class="drawer-content">
+            <div class="drawer-quick-actions">
               <button class="drawer-action-btn" id="drawerUndoBtn">
-                <span class="btn-icon">${Icons.undo('', 20)}</span>
+                <span class="btn-icon">${Icons.undo('action-svg', 20)}</span>
                 <span class="btn-text">Undo</span>
               </button>
               <button class="drawer-action-btn" id="drawerHintBtn">
-                <span class="btn-icon">${Icons.lightbulb('', 20)}</span>
+                <span class="btn-icon">${Icons.lightbulb('action-svg', 20)}</span>
                 <span class="btn-text">Hint</span>
               </button>
-              <button class="drawer-action-btn" id="drawerNewGameBtn">
-                <span class="btn-icon">${Icons.sparkle('', 20)}</span>
-                <span class="btn-text">New Game</span>
+              <button class="drawer-action-btn" id="drawerDealBtn">
+                <span class="btn-icon">${Icons.cards('action-svg', 20)}</span>
+                <span class="btn-text">Deal 10</span>
               </button>
-              <button class="drawer-action-btn" id="drawerRestartBtn">
-                <span class="btn-icon">${Icons.restart('', 20)}</span>
-                <span class="btn-text">Restart</span>
+              <button class="drawer-action-btn" id="drawerNewGameBtn">
+                <span class="btn-icon">${Icons.sparkle('action-svg', 20)}</span>
+                <span class="btn-text">New Deal</span>
               </button>
             </div>
 
             <div class="drawer-section">
-              <span class="drawer-section-title">Game Difficulty</span>
+              <span class="drawer-section-title">Suit Difficulty (Starts Fresh Deal)</span>
               <div class="difficulty-pills">
-                <button class="diff-pill ${this.engine.difficulty === 1 ? 'active' : ''}" data-diff="1">1 Suit (Easy)</button>
-                <button class="diff-pill ${this.engine.difficulty === 2 ? 'active' : ''}" data-diff="2">2 Suits (Normal)</button>
-                <button class="diff-pill ${this.engine.difficulty === 4 ? 'active' : ''}" data-diff="4">4 Suits (Hard)</button>
+                <button class="diff-pill ${this.engine.difficulty === 1 ? 'active' : ''}" data-diff="1">
+                  1 Suit (Relaxed)
+                </button>
+                <button class="diff-pill ${this.engine.difficulty === 2 ? 'active' : ''}" data-diff="2">
+                  2 Suits (Classic)
+                </button>
+                <button class="diff-pill ${this.engine.difficulty === 4 ? 'active' : ''}" data-diff="4">
+                  4 Suits (Master)
+                </button>
               </div>
             </div>
 
-            <div class="drawer-section drawer-footer-section">
+            <div class="drawer-footer-section">
               <div class="player-info-badge">
-                <img class="player-avatar-img" src="${this.currentUser.avatar || 'assets/avatars/ellen.png'}" alt="${this.currentUser.displayName || 'Player'}">
-                <span class="player-name">Playing as <b>${this.currentUser.displayName || this.currentUser.username || 'Player'}</b></span>
+                <img class="player-avatar-img" src="${this.currentUser.avatar}" alt="${this.currentUser.displayName}">
+                <span class="player-name">Playing as <strong>${this.currentUser.displayName}</strong></span>
               </div>
               <div class="drawer-footer-actions">
+                <button class="drawer-link-btn" id="drawerRestartBtn" title="Replay this exact deal from move 0">Replay Hand</button>
                 <button class="drawer-link-btn" id="drawerSwitchUserBtn">Switch Player</button>
-                <button class="drawer-link-btn" id="drawerLogoutBtn">Log Out</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Victory Modal -->
+        <!-- 5. Victory Modal Overlay with Physics Card Cascade Canvas -->
         <div class="victory-modal" id="victoryModal">
+          <canvas class="victory-cascade-canvas" id="victoryCascadeCanvas"></canvas>
           <div class="victory-card">
-            <span class="victory-trophy">${Icons.trophy('vic-trophy-svg', 54)}</span>
-            <h2>Magnificent Victory!</h2>
-            <p>You completed all 8 Spider sequences!</p>
+            <div class="victory-trophy">${Icons.trophy('victory-trophy-svg', 56)}</div>
+            <h2>Congratulations, ${this.currentUser.displayName}!</h2>
+            <p>You cleared all 8 royal runs!</p>
             <div class="victory-stats">
-              <div>Moves: <b id="vicMoves">0</b></div>
-              <div>Time: <b id="vicTime">0:00</b></div>
-              <div>Final Score: <b id="vicScore">0</b></div>
+              <div>Moves: <strong id="winMoves">0</strong></div>
+              <div>Score: <strong id="winScore">0</strong></div>
+              <div>Time: <strong id="winTime">00:00</strong></div>
             </div>
-            <button class="btn-primary" id="victoryPlayAgainBtn">Play Another Game</button>
+            <button class="btn-primary" id="winPlayAgainBtn">Deal Next Game</button>
           </div>
         </div>
       </div>
     `;
-
-    this.wireControls();
   }
 
-  wireControls() {
-    const chevron = this.container.querySelector('#drawerChevronBtn');
-    const drawer = this.container.querySelector('#bottomDrawerWrapper');
-    const wrapper = this.container.querySelector('#spiderGameWrapper');
+  attachGlobalEvents() {
+    window.addEventListener('resize', this.onResizeBound);
 
-    // 1. Initial State: Default OPEN on vertical (portrait), default COLLAPSED on horizontal (landscape)
-    const isLandscape = window.innerWidth > window.innerHeight;
-    if (!isLandscape) {
-      drawer?.classList.add('is-open');
-      wrapper?.classList.add('drawer-open');
-    } else {
-      drawer?.classList.remove('is-open');
-      wrapper?.classList.remove('drawer-open');
-    }
-
-    let userManuallyToggled = false;
-
-    chevron?.addEventListener('click', () => {
-      const isOpen = drawer?.classList.toggle('is-open');
-      wrapper?.classList.toggle('drawer-open', isOpen);
-      userManuallyToggled = true;
+    const drawerToggle = this.container.querySelector('#drawerToggleBtn');
+    drawerToggle?.addEventListener('click', () => {
       sound.playCardSlide();
+      this.setDrawerState(!this.drawerOpen);
     });
 
-    // Auto-collapse when rotating to horizontal, auto-open when rotating to vertical
-    const onOrientationChange = () => {
-      const landscapeNow = window.innerWidth > window.innerHeight;
-      if (landscapeNow) {
-        drawer?.classList.remove('is-open');
-        wrapper?.classList.remove('drawer-open');
-      } else {
-        if (!userManuallyToggled) {
-          drawer?.classList.add('is-open');
-          wrapper?.classList.add('drawer-open');
-        }
-      }
-    };
+    this.container.querySelector('#stockArea')?.addEventListener('click', () => {
+      this.handleDealStock();
+    });
 
-    window.addEventListener('resize', onOrientationChange);
-    window.addEventListener('orientationchange', onOrientationChange);
-
-    // Undo button
     this.container.querySelector('#drawerUndoBtn')?.addEventListener('click', () => {
-      if (this.engine.undo()) {
-        sound.playCardSlide();
-        this.render();
-      }
+      this.handleUndo();
     });
 
-    // Hint button
     this.container.querySelector('#drawerHintBtn')?.addEventListener('click', () => {
       this.showHint();
     });
 
-    // New game
+    this.container.querySelector('#drawerDealBtn')?.addEventListener('click', () => {
+      this.handleDealStock();
+    });
+
     this.container.querySelector('#drawerNewGameBtn')?.addEventListener('click', () => {
-      if (window.innerWidth > window.innerHeight) {
-        drawer?.classList.remove('is-open');
-        wrapper?.classList.remove('drawer-open');
-      }
-      sound.playDealWhoosh(0);
-      this.engine.startNewGame(this.engine.difficulty);
-      this.render();
+      this.startNewGame(this.engine.difficulty);
+      showToast('Dealt a fresh Winning Hand', 'success', 1800);
     });
 
-    // Restart
     this.container.querySelector('#drawerRestartBtn')?.addEventListener('click', () => {
-      if (window.innerWidth > window.innerHeight) {
-        drawer?.classList.remove('is-open');
-        wrapper?.classList.remove('drawer-open');
-      }
-      this.engine.startNewGame(this.engine.difficulty);
-      this.render();
-    });
-
-    // Difficulty buttons
-    this.container.querySelectorAll('.diff-pill').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const diff = parseInt(e.currentTarget.dataset.diff, 10);
-        this.container.querySelectorAll('.diff-pill').forEach(b => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        if (window.innerWidth > window.innerHeight) {
-          drawer?.classList.remove('is-open');
-          wrapper?.classList.remove('drawer-open');
-        }
-        this.engine.startNewGame(diff);
-        this.render();
-      });
-    });
-
-    // Stock pile click -> deal 10 cards
-    this.container.querySelector('#stockArea')?.addEventListener('click', () => {
-      if (!this.engine.canDealStock()) {
-        if (this.engine.stock.length === 0) return;
-        // Shake empty columns to alert player
-        this.highlightEmptyColumns();
-        return;
-      }
-      const dealt = this.engine.dealFromStock();
-      if (dealt) {
-        dealt.forEach((_, idx) => sound.playDealWhoosh(idx));
-        this.render();
-      }
-    });
-
-    // User logout & switch
-    this.container.querySelector('#drawerLogoutBtn')?.addEventListener('click', () => {
-      this.onUserLogout();
+      sound.playDealWhoosh(0);
+      this.selectedMove = null;
+      this.engine.restartCurrentDeal();
+      this.renderBoard();
+      showToast('Replaying current hand from Move 0', 'info', 2000);
     });
 
     this.container.querySelector('#drawerSwitchUserBtn')?.addEventListener('click', () => {
       this.onUserSwitch();
     });
 
-    // Victory play again
-    this.container.querySelector('#victoryPlayAgainBtn')?.addEventListener('click', () => {
-      this.container.querySelector('#victoryModal')?.classList.remove('is-active');
-      this.engine.startNewGame(this.engine.difficulty);
-      this.render();
+    this.container.querySelectorAll('.diff-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const diff = parseInt(e.currentTarget.dataset.diff, 10);
+        this.container.querySelectorAll('.diff-pill').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.startNewGame(diff);
+        const label = diff === 1 ? '1 Suit (Relaxed)' : diff === 2 ? '2 Suits (Classic)' : '4 Suits (Master)';
+        showToast(`Switched to ${label}`, 'info', 1800);
+      });
     });
-  }
 
-  attachGlobalEvents() {
-    // Start interval to update HUD timer smoothly
+    this.container.querySelector('#winPlayAgainBtn')?.addEventListener('click', () => {
+      if (this.cascadeRaf) {
+        cancelAnimationFrame(this.cascadeRaf);
+        this.cascadeRaf = null;
+      }
+      this.container.querySelector('#victoryModal')?.classList.remove('is-active');
+      this.startNewGame(this.engine.difficulty);
+    });
+
+    // Empty column click handler (for moving a selected stack to an empty column)
+    this.container.querySelectorAll('.tableau-column').forEach(colEl => {
+      colEl.addEventListener('click', (e) => {
+        if (e.target !== colEl) return;
+        const toCol = parseInt(colEl.dataset.col, 10);
+        if (this.selectedMove && this.engine.canMoveSequence(this.selectedMove.colIdx, this.selectedMove.cardIdx, toCol)) {
+          this.executeMove(this.selectedMove.colIdx, this.selectedMove.cardIdx, toCol);
+        }
+      });
+    });
+
     if (this.hudTimer) clearInterval(this.hudTimer);
     this.hudTimer = setInterval(() => {
-      const timeVal = this.container.querySelector('#hudTimeVal');
-      if (timeVal && this.engine.startTime) {
-        const totalSecs = this.engine.elapsedSeconds;
-        const mins = Math.floor(totalSecs / 60);
-        const secs = totalSecs % 60;
-        timeVal.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+      if (!this.engine.isWon && this.engine.startTime) {
+        const secs = Math.floor((Date.now() - this.engine.startTime) / 1000);
+        this.engine.elapsedSeconds = secs;
+        const timeEl = this.container.querySelector('#hudTime');
+        if (timeEl) timeEl.textContent = this.formatTime(secs);
       }
-    }, 500);
-
-    // Close bottom drawer when tapping background
-    this.container.querySelector('#spiderTableau')?.addEventListener('click', (e) => {
-      if (e.target.classList.contains('spider-tableau') || e.target.classList.contains('tableau-column')) {
-        this.container.querySelector('#bottomDrawerWrapper')?.classList.remove('is-open');
-      }
-    });
+    }, 1000);
   }
 
-  highlightEmptyColumns() {
-    const emptyCols = this.container.querySelectorAll('.tableau-column:empty');
-    emptyCols.forEach(col => {
-      col.classList.add('empty-col-warning');
-      setTimeout(() => col.classList.remove('empty-col-warning'), 1200);
+  setDrawerState(open) {
+    this.drawerOpen = open;
+    const drawer = this.container.querySelector('#bottomDrawer');
+    const wrapper = this.container.querySelector('#spiderWrapper');
+    if (drawer) drawer.classList.toggle('is-open', open);
+    if (wrapper) wrapper.classList.toggle('drawer-open', open);
+  }
+
+  formatTime(totalSeconds) {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  startNewGame(difficulty) {
+    sound.playDealWhoosh(0);
+    this.selectedMove = null;
+    this.engine.startNewGame(difficulty);
+    this.renderBoard();
+  }
+
+  handleUndo() {
+    if (this.engine.undo()) {
+      sound.playCardSlide();
+      this.selectedMove = null;
+      this.renderBoard();
+    } else {
+      showToast('Already at the start of the deal', 'info', 1600);
+    }
+  }
+
+  handleDealStock() {
+    const check = this.engine.canDealStock();
+    if (!check.allowed) {
+      if (check.reason === 'empty_columns') {
+        this.highlightEmptyColumns(check.emptyCols);
+        showToast('Every column must have at least 1 card before dealing', 'warning', 2600);
+      } else {
+        showToast('No stock deals remaining', 'info', 1800);
+      }
+      return;
+    }
+
+    const res = this.engine.dealFromStock();
+    if (res.success) {
+      for (let i = 0; i < 6; i++) {
+        sound.playDealWhoosh(i);
+      }
+      if (res.completedSuits.length > 0) {
+        setTimeout(() => sound.playFoundationClear(), 280);
+      }
+      this.selectedMove = null;
+      this.renderBoard();
+
+      // Animate newly dealt bottom cards flying in from stock
+      const cols = this.container.querySelectorAll('.tableau-column');
+      cols.forEach((colEl, i) => {
+        const cards = colEl.querySelectorAll('.solitaire-card');
+        const lastCard = cards[cards.length - 1];
+        if (lastCard) {
+          lastCard.style.animationDelay = `${i * 25}ms`;
+          lastCard.classList.add('deal-fly-in');
+        }
+      });
+
+      this.checkWinCondition();
+    }
+  }
+
+  highlightEmptyColumns(emptyCols) {
+    sound.vibrate([30, 50, 30]);
+    emptyCols.forEach(colIdx => {
+      const colEl = this.container.querySelector(`#col_${colIdx}`);
+      if (colEl) {
+        colEl.classList.add('empty-col-warning');
+        setTimeout(() => colEl.classList.remove('empty-col-warning'), 1400);
+      }
     });
   }
 
   showHint() {
     const hint = this.engine.getHint();
     if (!hint) {
-      alert('No moves found! Try dealing from the stock pile.');
+      showToast('No constructive moves left. Try Undo or Replay Hand!', 'warning', 2600);
       return;
     }
 
     sound.playCardSlide();
-    const fromColEl = this.container.querySelector(`.tableau-column[data-col="${hint.fromCol}"]`);
-    const toColEl = this.container.querySelector(`.tableau-column[data-col="${hint.toCol}"]`);
 
-    if (fromColEl && toColEl) {
+    if (hint.type === 'deal') {
+      const stockEl = this.container.querySelector('#stockArea');
+      stockEl?.classList.add('hint-glow');
+      showToast('Hint: Tap the Stock pile to deal 10 new cards', 'info', 2200);
+      setTimeout(() => stockEl?.classList.remove('hint-glow'), 1600);
+      return;
+    }
+
+    const fromColEl = this.container.querySelector(`#col_${hint.fromCol}`);
+    const toColEl = this.container.querySelector(`#col_${hint.toCol}`);
+
+    if (fromColEl) {
       const cards = fromColEl.querySelectorAll('.solitaire-card');
-      for (let i = hint.startIndex; i < cards.length; i++) {
-        cards[i].classList.add('hint-glow');
-        setTimeout(() => cards[i].classList.remove('hint-glow'), 1800);
-      }
+      cards.forEach((cardEl, idx) => {
+        if (idx >= hint.cardIdx) {
+          cardEl.classList.add('hint-glow');
+          setTimeout(() => cardEl.classList.remove('hint-glow'), 1600);
+        }
+      });
+    }
+
+    if (toColEl) {
       toColEl.classList.add('hint-dest-glow');
-      setTimeout(() => toColEl.classList.remove('hint-dest-glow'), 1800);
+      setTimeout(() => toColEl.classList.remove('hint-dest-glow'), 1600);
     }
   }
 
-  render() {
-    // 1. Update HUD
-    const movesEl = this.container.querySelector('#hudMovesVal');
-    const scoreEl = this.container.querySelector('#hudScoreVal');
+  runAutoComplete() {
+    const step = () => {
+      if (this.engine.isWon) return;
+      const hint = this.engine.getHint();
+      if (!hint || hint.type !== 'move') return;
+
+      const res = this.engine.moveSequence(hint.fromCol, hint.cardIdx, hint.toCol);
+      if (res.success) {
+        sound.playCardSnap();
+        if (res.completedSuit) sound.playFoundationClear();
+        this.renderBoard();
+        if (this.engine.isWon) {
+          this.checkWinCondition();
+        } else {
+          setTimeout(step, 140);
+        }
+      }
+    };
+    step();
+  }
+
+  renderBoard() {
+    this.updateHUD();
+    this.renderFoundation();
+    this.renderAutoCompleteCTA();
+    this.renderStock();
+    this.renderTableau();
+  }
+
+  updateHUD() {
+    const movesEl = this.container.querySelector('#hudMoves');
+    const scoreEl = this.container.querySelector('#hudScore');
     if (movesEl) movesEl.textContent = this.engine.moves;
     if (scoreEl) scoreEl.textContent = this.engine.score;
+  }
 
-    // 2. Render Foundation
-    const foundationArea = this.container.querySelector('#foundationArea');
-    if (foundationArea) {
-      foundationArea.innerHTML = '';
-      if (this.engine.foundations.length === 0) {
-        foundationArea.innerHTML = CardRenderer.renderFoundationSlot();
-      } else {
-        // Stack completed suits
-        for (let i = 0; i < this.engine.foundations.length; i++) {
-          const suit = this.engine.foundations[i];
-          const completedCard = document.createElement('div');
-          completedCard.className = 'foundation-completed-card';
-          completedCard.style.left = `${i * 12}px`;
-          completedCard.innerHTML = CardRenderer.renderFaceUpCard({ rank: 13, suit });
-          foundationArea.appendChild(completedCard);
-        }
-      }
+  renderAutoCompleteCTA() {
+    const ctaEl = this.container.querySelector('#spiderCenterCta');
+    if (!ctaEl) return;
+
+    if (this.engine.canAutoComplete()) {
+      ctaEl.innerHTML = `
+        <button type="button" class="spider-autocomplete-btn" id="spiderAutoCompleteBtn">
+          ${Icons.sparkle('auto-svg', 16)} <span>Auto-Finish</span>
+        </button>
+      `;
+      ctaEl.querySelector('#spiderAutoCompleteBtn')?.addEventListener('click', () => {
+        this.runAutoComplete();
+      });
+    } else {
+      ctaEl.innerHTML = '';
+    }
+  }
+
+  renderFoundation() {
+    const foundationEl = this.container.querySelector('#foundationArea');
+    if (!foundationEl) return;
+
+    const completedCount = this.engine.foundations.length;
+    let html = `
+      <div class="foundation-slot">
+        <div class="foundation-spider-watermark">
+          ${CardRenderer.getSpiderWatermarkSVG()}
+        </div>
+        <span class="foundation-counter-badge">${completedCount}/8</span>
+      </div>
+    `;
+
+    this.engine.foundations.forEach((suit, idx) => {
+      const offset = idx * 8;
+      const kingCard = { suit, rank: 13, label: 'K', faceUp: true };
+      html += `
+        <div class="foundation-completed-card" style="left: ${offset}px; z-index: ${idx + 2}">
+          ${CardRenderer.renderCardFace(kingCard)}
+        </div>
+      `;
+    });
+
+    foundationEl.innerHTML = html;
+  }
+
+  renderStock() {
+    const stockEl = this.container.querySelector('#stockArea');
+    if (!stockEl) return;
+
+    const dealsRemaining = Math.floor(this.engine.stock.length / 10);
+    if (dealsRemaining === 0) {
+      stockEl.innerHTML = `<div class="empty-stock-placeholder" title="Stock Empty"></div>`;
+      return;
     }
 
-    // 3. Render Stock Pile (5 fan deals)
-    const stockArea = this.container.querySelector('#stockArea');
-    if (stockArea) {
-      stockArea.innerHTML = '';
-      const dealsLeft = this.engine.stock.length;
-      if (dealsLeft > 0) {
-        for (let i = 0; i < dealsLeft; i++) {
-          const stockCard = document.createElement('div');
-          stockCard.className = 'stock-fanned-card';
-          stockCard.style.left = `${i * 10}px`;
-          stockCard.innerHTML = CardRenderer.renderStockBack();
-          stockArea.appendChild(stockCard);
-        }
-      } else {
-        stockArea.innerHTML = `<div class="empty-stock-placeholder">${Icons.check('', 18)}</div>`;
-      }
+    let html = '';
+    for (let i = 0; i < dealsRemaining; i++) {
+      const rightOffset = (dealsRemaining - 1 - i) * 8;
+      html += `
+        <div class="stock-fanned-card" style="right: ${rightOffset}px; z-index: ${i + 1}">
+          ${CardRenderer.renderStockCardBack()}
+        </div>
+      `;
     }
+    html += `<span class="stock-deals-badge">${dealsRemaining}</span>`;
+    stockEl.innerHTML = html;
+  }
 
-    // 4. Render Tableau Columns
-    this.engine.columns.forEach((colCards, colIdx) => {
-      const colEl = this.container.querySelector(`.tableau-column[data-col="${colIdx}"]`);
-      if (!colEl) return;
+  renderTableau() {
+    const isPortrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
+
+    for (let colIdx = 0; colIdx < 10; colIdx++) {
+      const colEl = this.container.querySelector(`#col_${colIdx}`);
+      if (!colEl) continue;
+
+      const cards = this.engine.columns[colIdx];
       colEl.innerHTML = '';
 
-      colCards.forEach((card, cardIdx) => {
-        const cardEl = CardRenderer.createCardElement(card, colIdx, cardIdx);
-        
-        // Calculate vertical stagger offset
-        // Face down cards overlap tighter; face up cards give more readable room
-        let topOffset = 0;
-        for (let k = 0; k < cardIdx; k++) {
-          topOffset += colCards[k].faceUp ? 26 : 14;
-        }
-        cardEl.style.top = `${topOffset}px`;
-        cardEl.style.zIndex = cardIdx + 1;
+      // Dynamic vertical spacing so deep stacks never clip off the bottom of the screen
+      const faceDownCount = cards.filter(c => !c.faceUp).length;
+      const faceUpCount = cards.length - faceDownCount;
+      const faceDownStep = isPortrait ? 7 : 8;
+      const maxFaceUpStep = isPortrait ? 24 : 26;
+      const availableFaceUpSpace = isPortrait ? 250 : 210;
+      const faceUpStep = faceUpCount > 1
+        ? Math.max(17, Math.min(maxFaceUpStep, Math.floor((availableFaceUpSpace - faceDownCount * faceDownStep) / faceUpCount)))
+        : maxFaceUpStep;
 
-        // Wire tap and drag listeners if card is face up
+      let currentTop = 0;
+
+      cards.forEach((card, cardIdx) => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'solitaire-card';
+        cardDiv.dataset.col = colIdx;
+        cardDiv.dataset.index = cardIdx;
+        cardDiv.style.top = `${currentTop}px`;
+        cardDiv.style.zIndex = cardIdx + 1;
+
         if (card.faceUp) {
-          this.wireCardInteraction(cardEl, colIdx, cardIdx);
+          cardDiv.innerHTML = CardRenderer.renderCardFace(card);
+          const isMovable = this.engine.isValidSequence(colIdx, cardIdx);
+          if (isMovable) {
+            cardDiv.classList.add('can-move');
+          } else {
+            cardDiv.classList.add('is-blocked-sequence');
+          }
+          if (
+            this.selectedMove &&
+            this.selectedMove.colIdx === colIdx &&
+            cardIdx >= this.selectedMove.cardIdx
+          ) {
+            cardDiv.classList.add('selected-glow');
+          }
+          currentTop += faceUpStep;
+        } else {
+          cardDiv.innerHTML = CardRenderer.renderTableauCardBack();
+          cardDiv.classList.add('is-facedown');
+          currentTop += faceDownStep;
         }
 
-        colEl.appendChild(cardEl);
+        this.wireCardInteraction(cardDiv, colIdx, cardIdx);
+        colEl.appendChild(cardDiv);
       });
-
-      // Wire column click for tap-to-move destination
-      colEl.onclick = (e) => {
-        if (this.selectedSequence) {
-          this.attemptMove(this.selectedSequence.colIdx, this.selectedSequence.startIndex, colIdx);
-          this.clearSelection();
-        }
-      };
-    });
-
-    // Check Victory
-    if (this.engine.isWon) {
-      sound.playFoundationClear();
-      const vicModal = this.container.querySelector('#victoryModal');
-      const vicMoves = this.container.querySelector('#vicMoves');
-      const vicTime = this.container.querySelector('#vicTime');
-      const vicScore = this.container.querySelector('#vicScore');
-
-      if (vicMoves) vicMoves.textContent = this.engine.moves;
-      if (vicTime) {
-        const m = Math.floor(this.engine.elapsedSeconds / 60);
-        const s = this.engine.elapsedSeconds % 60;
-        vicTime.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-      }
-      if (vicScore) vicScore.textContent = this.engine.score;
-      vicModal?.classList.add('is-active');
     }
   }
 
-  wireCardInteraction(cardEl, colIdx, cardIdx) {
-    const col = this.engine.columns[colIdx];
-    const isMovable = this.engine.isValidSequence(col, cardIdx);
-
-    if (isMovable) {
-      cardEl.classList.add('can-move');
-    }
-
-    // Tap-to-move handler
-    cardEl.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      // If already selected, or selecting another column's card as destination:
-      if (this.selectedSequence) {
-        if (this.selectedSequence.colIdx === colIdx && this.selectedSequence.startIndex === cardIdx) {
-          // Deselect if tapped same card
-          this.clearSelection();
-          return;
-        }
-
-        // Try moving selected cards onto this column!
-        const success = this.attemptMove(this.selectedSequence.colIdx, this.selectedSequence.startIndex, colIdx);
-        this.clearSelection();
-        if (success) return;
-      }
-
-      // If not moving into, select this card sequence!
-      if (isMovable) {
-        // Smart single-tap auto-move:
-        // Try finding the best valid destination automatically (especially great while walking!)
-        const autoDest = this.findBestDestination(colIdx, cardIdx);
-        if (autoDest !== null) {
-          this.attemptMove(colIdx, cardIdx, autoDest);
-        } else {
-          // Otherwise highlight as selected sequence
-          this.selectSequence(colIdx, cardIdx);
-        }
-      }
-    });
-
-    // Drag and drop handler
-    cardEl.draggable = isMovable;
-    cardEl.addEventListener('dragstart', (e) => {
-      if (!isMovable) {
-        e.preventDefault();
-        return;
-      }
-      this.draggedData = { colIdx, startIndex: cardIdx };
-      e.dataTransfer.setData('text/plain', JSON.stringify(this.draggedData));
-      cardEl.classList.add('is-dragging');
-      sound.playCardSlide();
-    });
-
-    cardEl.addEventListener('dragend', () => {
-      cardEl.classList.remove('is-dragging');
-      this.draggedData = null;
-    });
-  }
-
-  findBestDestination(fromColIdx, startIndex) {
-    const fromCol = this.engine.columns[fromColIdx];
-    const movingCard = fromCol[startIndex];
-
-    let sameSuitDest = null;
-    let diffSuitDest = null;
-    let emptyColDest = null;
-
-    for (let c = 0; c < 10; c++) {
-      if (c === fromColIdx) continue;
-      if (this.engine.canMove(fromColIdx, startIndex, c)) {
-        const destCol = this.engine.columns[c];
-        if (destCol.length === 0) {
-          // Only auto-move to empty column if it uncovers a face-down card!
-          if (startIndex > 0 && !fromCol[startIndex - 1].faceUp && emptyColDest === null) {
-            emptyColDest = c;
-          }
-        } else {
-          const topCard = destCol[destCol.length - 1];
-          if (topCard.suit === movingCard.suit) {
-            sameSuitDest = c;
-            break; // Ideal move found!
-          } else if (diffSuitDest === null) {
-            diffSuitDest = c;
-          }
-        }
-      }
-    }
-
-    return sameSuitDest ?? diffSuitDest ?? emptyColDest;
-  }
-
-  selectSequence(colIdx, startIndex) {
-    this.clearSelection();
-    this.selectedSequence = { colIdx, startIndex };
-    const colEl = this.container.querySelector(`.tableau-column[data-col="${colIdx}"]`);
-    const cards = colEl?.querySelectorAll('.solitaire-card');
-    if (cards) {
-      for (let i = startIndex; i < cards.length; i++) {
-        cards[i].classList.add('selected-glow');
-      }
-    }
-    sound.playCardSlide();
-  }
-
-  clearSelection() {
-    this.selectedSequence = null;
-    this.container.querySelectorAll('.selected-glow').forEach(el => el.classList.remove('selected-glow'));
-  }
-
-  attemptMove(fromColIdx, startIndex, toColIdx) {
-    const res = this.engine.moveCards(fromColIdx, startIndex, toColIdx);
-    if (res && res.success) {
+  executeMove(fromCol, startIndex, toCol) {
+    const res = this.engine.moveSequence(fromCol, startIndex, toCol);
+    if (res.success) {
+      sound.playCardSnap();
       if (res.completedSuit) {
-        sound.playFoundationClear();
-      } else {
-        sound.playCardSnap();
+        setTimeout(() => sound.playFoundationClear(), 200);
       }
-      this.render();
+      this.selectedMove = null;
+      this.renderBoard();
+      this.checkWinCondition();
       return true;
     }
     return false;
+  }
+
+  wireCardInteraction(cardEl, colIdx, cardIdx) {
+    cardEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      // 1. If a card stack is currently selected in ANOTHER column, check if this column is a valid drop target!
+      if (this.selectedMove && this.selectedMove.colIdx !== colIdx) {
+        if (this.engine.canMoveSequence(this.selectedMove.colIdx, this.selectedMove.cardIdx, colIdx)) {
+          this.executeMove(this.selectedMove.colIdx, this.selectedMove.cardIdx, colIdx);
+          return;
+        }
+      }
+
+      // 2. Otherwise, check if the tapped card is part of a movable sequence
+      if (!this.engine.isValidSequence(colIdx, cardIdx)) {
+        this.selectedMove = null;
+        cardEl.classList.add('card-shake');
+        setTimeout(() => cardEl.classList.remove('card-shake'), 300);
+        return;
+      }
+
+      // 3. Smart Tap-to-Move: automatically expands to the whole same-suit run and moves to best destination
+      const bestDest = this.engine.findBestDestination(colIdx, cardIdx);
+      if (bestDest !== null) {
+        this.executeMove(colIdx, bestDest.startIndex, bestDest.toCol);
+      } else {
+        // Toggle selection so player can inspect or tap another column manually
+        const runTop = this.engine.getHighestMovableRunIndex(colIdx, cardIdx);
+        if (this.selectedMove && this.selectedMove.colIdx === colIdx && this.selectedMove.cardIdx === runTop) {
+          this.selectedMove = null;
+        } else {
+          this.selectedMove = { colIdx, cardIdx: runTop };
+          cardEl.classList.add('card-shake');
+          setTimeout(() => cardEl.classList.remove('card-shake'), 300);
+        }
+        this.renderTableau();
+      }
+    });
+  }
+
+  checkWinCondition() {
+    if (this.engine.isWon) {
+      sound.playStepGoalMet();
+      const modal = this.container.querySelector('#victoryModal');
+      if (modal) {
+        this.container.querySelector('#winMoves').textContent = this.engine.moves;
+        this.container.querySelector('#winScore').textContent = this.engine.score;
+        this.container.querySelector('#winTime').textContent = this.formatTime(this.engine.elapsedSeconds);
+        modal.classList.add('is-active');
+        this.startVictoryCascade();
+      }
+    }
+  }
+
+  startVictoryCascade() {
+    const canvas = this.container.querySelector('#victoryCascadeCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = Array.from({ length: 24 }, (_, i) => ({
+      x: Math.random() * canvas.width,
+      y: -60 - (i * 40),
+      vx: (Math.random() - 0.5) * 6,
+      vy: Math.random() * 3 + 2,
+      isRed: i % 2 !== 0
+    }));
+
+    const renderFrame = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.28; // gravity
+
+        if (p.y + 72 > canvas.height) {
+          p.y = canvas.height - 72;
+          p.vy = -p.vy * 0.78;
+        }
+        if (p.x < -60 || p.x > canvas.width + 60) {
+          p.x = Math.random() * canvas.width;
+          p.y = -70;
+          p.vy = 2;
+        }
+
+        ctx.fillStyle = '#fffdf9';
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(p.x, p.y, 52, 72, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = p.isRed ? '#dc2626' : '#1e293b';
+        ctx.font = 'bold 18px Georgia, serif';
+        ctx.fillText('K', p.x + 7, p.y + 20);
+
+        // Draw crisp vector diamond pip in card center
+        const cx = p.x + 26;
+        const cy = p.y + 42;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 10);
+        ctx.lineTo(cx + 8, cy);
+        ctx.lineTo(cx, cy + 10);
+        ctx.lineTo(cx - 8, cy);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      this.cascadeRaf = requestAnimationFrame(renderFrame);
+    };
+
+    renderFrame();
   }
 }

@@ -1,338 +1,377 @@
 /**
- * Words of Wonders (WoW) - Game Engine & State Machine
- * Handles crossword matrix, intersections, bonus jar, hints, and player progression.
+ * Words of Wonders (WoW) Core Game Engine
+ * Handles crossword grid construction, wheel multiset letter validation,
+ * bonus word jar, Butterfly tile bonuses, and smart hint progression.
  */
 
 import { WOW_LEVELS } from './levels.js';
-import { wowDictionary } from './dictionary.js';
-import { sound } from '../sound.js';
+import { VALID_ENGLISH_WORDS } from './dictionary.js';
 
 export class WowEngine {
   constructor(user = 'Ellen') {
     this.user = user;
-    this.levels = WOW_LEVELS;
-    this.levelIndex = this.loadUserLevel();
-    this.stars = this.loadUserStars();
-    this.coins = this.loadUserCoins();
+    this.levelIndex = 0;
+    this.coins = 150;
+    this.stars = 0;
 
     this.currentLevel = null;
-    this.grid = []; // 2D matrix of cells
-    this.solvedWords = new Set();
-    this.bonusWordsFound = new Set();
     this.wheelLetters = [];
-    this.isLevelWon = false;
-
-    this.startLevel(this.levelIndex);
-  }
-
-  setUser(user) {
-    this.user = user;
-    this.levelIndex = this.loadUserLevel();
-    this.stars = this.loadUserStars();
-    this.coins = this.loadUserCoins();
-    this.startLevel(this.levelIndex);
-  }
-
-  loadUserLevel() {
-    try {
-      const saved = localStorage.getItem(`juegitos_wow_level_${this.user}`);
-      const idx = saved ? parseInt(saved, 10) : 0;
-      return idx >= 0 && idx < this.levels.length ? idx : 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  loadUserStars() {
-    try {
-      const s = localStorage.getItem(`juegitos_wow_stars_${this.user}`);
-      return s ? parseInt(s, 10) : 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  loadUserCoins() {
-    try {
-      const c = localStorage.getItem(`juegitos_wow_coins_${this.user}`);
-      return c ? parseInt(c, 10) : 100; // 100 starting coins
-    } catch (e) {
-      return 100;
-    }
-  }
-
-  saveState() {
-    try {
-      localStorage.setItem(`juegitos_wow_level_${this.user}`, this.levelIndex.toString());
-      localStorage.setItem(`juegitos_wow_stars_${this.user}`, this.stars.toString());
-      localStorage.setItem(`juegitos_wow_coins_${this.user}`, this.coins.toString());
-    } catch (e) {
-      console.warn('Could not save WoW state', e);
-    }
-  }
-
-  startLevel(index = 0) {
-    if (index < 0 || index >= this.levels.length) {
-      index = 0;
-    }
-    this.levelIndex = index;
-    this.currentLevel = this.levels[this.levelIndex];
+    this.grid = [];
     this.solvedWords = new Set();
-    this.bonusWordsFound = new Set();
-    this.isLevelWon = false;
-    this.wheelLetters = [...this.currentLevel.letters];
+    this.bonusWords = new Set();
+    this.butterflyCollected = false;
+    this.isLevelComplete = false;
 
-    this.buildGridMatrix();
-    this.saveState();
+    this.loadProgress();
+    this.initLevel(this.levelIndex);
   }
 
-  buildGridMatrix() {
-    const rows = this.currentLevel.gridRows;
-    const cols = this.currentLevel.gridCols;
+  getStorageKey() {
+    return `juegitos_wow_progress_${this.user}`;
+  }
 
-    // Initialize blank grid
-    this.grid = Array.from({ length: rows }, () =>
-      Array.from({ length: cols }, () => null)
+  loadProgress() {
+    try {
+      const raw = localStorage.getItem(this.getStorageKey());
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        this.levelIndex = typeof parsed.levelIndex === 'number' ? parsed.levelIndex : 0;
+        this.coins = typeof parsed.coins === 'number' ? parsed.coins : 150;
+        this.stars = typeof parsed.stars === 'number' ? parsed.stars : 0;
+      }
+    } catch (e) {
+      this.levelIndex = 0;
+      this.coins = 150;
+    }
+  }
+
+  saveProgress() {
+    try {
+      localStorage.setItem(
+        this.getStorageKey(),
+        JSON.stringify({
+          levelIndex: this.levelIndex,
+          coins: this.coins,
+          stars: this.stars,
+          updatedAt: Date.now()
+        })
+      );
+    } catch (e) {}
+  }
+
+  setUser(username) {
+    this.user = username;
+    this.loadProgress();
+    this.initLevel(this.levelIndex);
+  }
+
+  loadLevel(idx = this.levelIndex) {
+    return this.initLevel(idx);
+  }
+
+  initLevel(idx = this.levelIndex) {
+    const safeIdx = Math.max(0, idx) % WOW_LEVELS.length;
+    this.levelIndex = safeIdx;
+    this.currentLevel = WOW_LEVELS[safeIdx];
+    this.wheelLetters = [...this.currentLevel.letters];
+    this.solvedWords = new Set();
+    this.bonusWords = new Set();
+    this.butterflyCollected = false;
+    this.isLevelComplete = false;
+
+    const { rows, cols, words, butterfly } = this.currentLevel;
+    this.grid = Array.from({ length: rows }, (_, r) =>
+      Array.from({ length: cols }, (_, c) => ({
+        r,
+        c,
+        active: false,
+        char: '',
+        revealed: false,
+        hasButterfly: !!(butterfly && butterfly.r === r && butterfly.c === c),
+        wordIds: []
+      }))
     );
 
-    // Place words in grid with verified intersections
-    for (const w of this.currentLevel.words) {
-      const letters = w.word.toUpperCase().split('');
-      for (let i = 0; i < letters.length; i++) {
-        const r = w.direction === 'H' ? w.row : w.row + i;
-        const c = w.direction === 'H' ? w.col + i : w.col;
-
-        if (!this.grid[r][c]) {
-          this.grid[r][c] = {
-            row: r,
-            col: c,
-            letter: letters[i],
-            isRevealed: false,
-            wordIds: [w.id]
-          };
-        } else {
-          // Intersecting cell
-          if (!this.grid[r][c].wordIds.includes(w.id)) {
-            this.grid[r][c].wordIds.push(w.id);
-          }
+    words.forEach((wObj, wIdx) => {
+      const chars = wObj.word.toUpperCase().split('');
+      chars.forEach((ch, i) => {
+        const r = wObj.dir === 'H' ? wObj.row : wObj.row + i;
+        const c = wObj.dir === 'H' ? wObj.col + i : wObj.col;
+        if (r < rows && c < cols) {
+          const cell = this.grid[r][c];
+          cell.active = true;
+          cell.char = ch;
+          cell.wordIds.push(wIdx);
         }
-      }
-    }
+      });
+    });
   }
 
-  shuffleLetters() {
-    for (let i = this.wheelLetters.length - 1; i > 0; i--) {
+  shuffleWheel() {
+    const arr = [...this.wheelLetters];
+    for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [this.wheelLetters[i], this.wheelLetters[j]] = [this.wheelLetters[j], this.wheelLetters[i]];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    sound.playCardSlide();
+    if (arr.length > 1 && arr.every((ch, idx) => ch === this.wheelLetters[idx])) {
+      [arr[0], arr[1]] = [arr[1], arr[0]];
+    }
+    this.wheelLetters = arr;
     return this.wheelLetters;
   }
 
   /**
-   * Submit a dragged word
+   * Verifies that `word` can be formed using the available letter counts on the current wheel
    */
-  submitWord(word) {
-    if (!word) return { status: 'invalid' };
-    const upper = word.toUpperCase().trim();
+  canFormFromWheel(word) {
+    const counts = {};
+    for (const ch of this.wheelLetters) {
+      const u = ch.toUpperCase();
+      counts[u] = (counts[u] || 0) + 1;
+    }
+    for (const ch of word.toUpperCase()) {
+      if (!counts[ch]) return false;
+      counts[ch]--;
+    }
+    return true;
+  }
 
-    // 1. Check if word is on the Crossword Board
-    const match = this.currentLevel.words.find(w => w.word.toUpperCase() === upper);
-    if (match) {
-      if (this.solvedWords.has(match.id)) {
-        return { status: 'already_found', word: upper };
+  submitWord(candidate) {
+    const upper = (candidate || '').trim().toUpperCase();
+
+    if (upper.length < 3) {
+      return { status: 'too_short', word: upper };
+    }
+
+    // Strict multiset check against current wheel letters
+    if (!this.canFormFromWheel(upper)) {
+      return { status: 'invalid', word: upper };
+    }
+
+    // 1. Check if it matches a crossword board word
+    const matchingWordObj = this.currentLevel.words.find(w => w.word.toUpperCase() === upper);
+
+    if (matchingWordObj) {
+      if (this.solvedWords.has(upper)) {
+        const existingCells = this.getWordCells(matchingWordObj);
+        return { status: 'already_found', word: upper, cells: existingCells };
       }
 
-      // Mark word as solved
-      this.solvedWords.add(match.id);
-      this.coins += 10; // +10 coins per crossword word
-
-      // Reveal intersecting cells
+      this.solvedWords.add(upper);
       const newlyRevealed = [];
-      const letters = match.word.split('');
-      for (let i = 0; i < letters.length; i++) {
-        const r = match.direction === 'H' ? match.row : match.row + i;
-        const c = match.direction === 'H' ? match.col + i : match.col;
+      const allWordCells = this.getWordCells(matchingWordObj);
+      let caughtButterfly = false;
+
+      allWordCells.forEach(({ r, c }) => {
         const cell = this.grid[r][c];
-        if (cell && !cell.isRevealed) {
-          cell.isRevealed = true;
-          newlyRevealed.push({ row: r, col: c, letter: cell.letter });
+        if (!cell.revealed) {
+          cell.revealed = true;
+          newlyRevealed.push({ r, c, char: cell.char });
         }
-      }
+        if (cell.hasButterfly && !this.butterflyCollected) {
+          this.butterflyCollected = true;
+          cell.hasButterfly = false;
+          caughtButterfly = true;
+        }
+      });
 
-      // Check level victory (all words solved)
-      const isLevelComplete = this.solvedWords.size === this.currentLevel.words.length;
-      if (isLevelComplete) {
-        this.isLevelWon = true;
-        this.stars += 3; // +3 stars for completing a Wonder
-        this.coins += 50; // +50 bonus coins
-        this.saveState();
-      } else {
-        this.saveState();
-      }
+      this.syncCompletedWordsFromCells();
 
-      sound.playCardSnap();
+      let coinsAwarded = upper.length * 5;
+      if (caughtButterfly) {
+        coinsAwarded += 25;
+      }
+      this.coins += coinsAwarded;
+      this.stars += 1;
+
+      this.checkLevelCompletion();
+      this.saveProgress();
 
       return {
-        status: 'success',
+        status: 'board_word',
         word: upper,
-        wordId: match.id,
-        isLevelComplete,
-        newlyRevealed
+        newlyRevealed,
+        allWordCells,
+        coinsAwarded,
+        caughtButterfly,
+        isLevelComplete: this.isLevelComplete
       };
     }
 
-    // 2. Check if it's a genuine Bonus Word (must be real English and not in puzzle)
-    const isBonus = wowDictionary.isValidBonusWord(upper, this.currentLevel);
+    // 2. Check if it is a valid English bonus word
+    if (this.bonusWords.has(upper)) {
+      return { status: 'bonus_already', word: upper };
+    }
 
-    if (isBonus) {
-      if (this.bonusWordsFound.has(upper)) {
-        return { status: 'already_found_bonus', word: upper };
-      }
-
-      this.bonusWordsFound.add(upper);
-      this.coins += 5; // +5 coins per bonus word
-
-      // Check bonus jar milestone (every 5 bonus words)
-      let jarFilled = false;
-      if (this.bonusWordsFound.size % 5 === 0) {
-        jarFilled = true;
-        this.stars += 1;
-        this.coins += 25;
-      }
-
-      this.saveState();
-      sound.playCardSlide();
+    if (VALID_ENGLISH_WORDS.has(upper)) {
+      this.bonusWords.add(upper);
+      const coinsAwarded = 5;
+      this.coins += coinsAwarded;
+      this.saveProgress();
 
       return {
-        status: 'bonus',
+        status: 'bonus_word',
         word: upper,
-        bonusCount: this.bonusWordsFound.size,
-        jarFilled
+        coinsAwarded,
+        totalBonusCount: this.bonusWords.size
       };
     }
 
-    // 3. Strictly invalid word (not in dictionary or not formable)
     return { status: 'invalid', word: upper };
   }
 
-  /**
-   * Helper: check if cells revealed by hints complete any crossword words
-   * and check if the entire board is solved.
-   */
-  checkWordsCompletedByReveal() {
-    const newlySolvedWords = [];
+  getWordCells(wordObj) {
+    const cells = [];
+    const len = wordObj.word.length;
+    for (let i = 0; i < len; i++) {
+      const r = wordObj.dir === 'H' ? wordObj.row : wordObj.row + i;
+      const c = wordObj.dir === 'H' ? wordObj.col + i : wordObj.col;
+      cells.push({ r, c });
+    }
+    return cells;
+  }
 
-    for (const w of this.currentLevel.words) {
-      if (!this.solvedWords.has(w.id)) {
-        let allRevealed = true;
-        for (let i = 0; i < w.word.length; i++) {
-          const r = w.direction === 'H' ? w.row : w.row + i;
-          const c = w.direction === 'H' ? w.col + i : w.col;
-          if (!this.grid[r][c]?.isRevealed) {
-            allRevealed = false;
+  syncCompletedWordsFromCells() {
+    this.currentLevel.words.forEach(wObj => {
+      const upper = wObj.word.toUpperCase();
+      if (!this.solvedWords.has(upper)) {
+        const cells = this.getWordCells(wObj);
+        const allRevealed = cells.every(({ r, c }) => this.grid[r][c].revealed);
+        if (allRevealed) {
+          this.solvedWords.add(upper);
+        }
+      }
+    });
+  }
+
+  checkLevelCompletion() {
+    this.syncCompletedWordsFromCells();
+    let allRevealed = true;
+    for (let r = 0; r < this.currentLevel.rows; r++) {
+      for (let c = 0; c < this.currentLevel.cols; c++) {
+        if (this.grid[r][c].active && !this.grid[r][c].revealed) {
+          allRevealed = false;
+          break;
+        }
+      }
+    }
+
+    if (allRevealed && !this.isLevelComplete) {
+      this.isLevelComplete = true;
+      this.coins += 40;
+      this.stars += 3;
+      this.saveProgress();
+    }
+
+    return this.isLevelComplete;
+  }
+
+  /**
+   * Smart Lightbulb Hint (Cost: 15 Coins):
+   * Prioritizes revealing the FIRST unrevealed letter of an unsolved word so it guides the player!
+   */
+  useRandomHint() {
+    const cost = 15;
+    if (this.coins < cost) {
+      return { success: false, reason: 'insufficient_coins', cost };
+    }
+
+    let chosen = null;
+
+    // First look for the first unrevealed letter of any unsolved word
+    for (const wObj of this.currentLevel.words) {
+      if (!this.solvedWords.has(wObj.word.toUpperCase())) {
+        const cells = this.getWordCells(wObj);
+        const firstUnrevealed = cells.find(({ r, c }) => !this.grid[r][c].revealed);
+        if (firstUnrevealed) {
+          chosen = this.grid[firstUnrevealed.r][firstUnrevealed.c];
+          break;
+        }
+      }
+    }
+
+    // Fallback to any unrevealed active cell
+    if (!chosen) {
+      for (let r = 0; r < this.currentLevel.rows; r++) {
+        for (let c = 0; c < this.currentLevel.cols; c++) {
+          const cell = this.grid[r][c];
+          if (cell.active && !cell.revealed) {
+            chosen = cell;
             break;
           }
         }
-        if (allRevealed) {
-          this.solvedWords.add(w.id);
-          newlySolvedWords.push(w);
-        }
+        if (chosen) break;
       }
     }
 
-    const isLevelComplete = this.solvedWords.size === this.currentLevel.words.length;
-    if (isLevelComplete && !this.isLevelWon) {
-      this.isLevelWon = true;
-      this.stars += 3;
-      this.coins += 50;
-      this.saveState();
-    } else {
-      this.saveState();
+    if (!chosen) {
+      return { success: false, reason: 'board_full' };
     }
 
+    this.coins -= cost;
+    chosen.revealed = true;
+
+    let caughtButterfly = false;
+    if (chosen.hasButterfly && !this.butterflyCollected) {
+      this.butterflyCollected = true;
+      chosen.hasButterfly = false;
+      caughtButterfly = true;
+      this.coins += 25;
+    }
+
+    this.checkLevelCompletion();
+    this.saveProgress();
+
     return {
-      isLevelComplete,
-      newlySolvedWords
+      success: true,
+      cell: { r: chosen.r, c: chosen.c, char: chosen.char },
+      caughtButterfly,
+      coinsRemaining: this.coins,
+      isLevelComplete: this.isLevelComplete
     };
   }
 
   /**
-   * Hint 1: Lightbulb
-   * Reveals a random unrevealed cell on the crossword grid
+   * Targeted Hammer Reveal: reveals the exact cell tapped by the player (Cost: 25 Coins)
    */
-  useLightbulb() {
+  useTargetedHint(r, c) {
     const cost = 25;
     if (this.coins < cost) {
-      return { success: false, reason: 'Need 25 coins for Lightbulb hint!' };
+      return { success: false, reason: 'insufficient_coins', cost };
     }
 
-    const unrevealedCells = [];
-    for (let r = 0; r < this.currentLevel.gridRows; r++) {
-      for (let c = 0; c < this.currentLevel.gridCols; c++) {
-        const cell = this.grid[r][c];
-        if (cell && !cell.isRevealed) {
-          unrevealedCells.push(cell);
-        }
-      }
-    }
-
-    if (unrevealedCells.length === 0) {
-      return { success: false, reason: 'All letters already revealed!' };
+    const cell = this.grid[r]?.[c];
+    if (!cell || !cell.active || cell.revealed) {
+      return { success: false, reason: 'invalid_cell' };
     }
 
     this.coins -= cost;
-    const target = unrevealedCells[Math.floor(Math.random() * unrevealedCells.length)];
-    target.isRevealed = true;
-    sound.playCardSnap();
+    cell.revealed = true;
 
-    // Check if this reveal completed any words or the level
-    const progress = this.checkWordsCompletedByReveal();
-
-    return {
-      success: true,
-      cell: { row: target.row, col: target.col, letter: target.letter },
-      isLevelComplete: progress.isLevelComplete,
-      newlySolvedWords: progress.newlySolvedWords
-    };
-  }
-
-  /**
-   * Hint 2: Target / Hammer
-   * Reveals a user-selected cell
-   */
-  useHammer(row, col) {
-    const cost = 25;
-    if (this.coins < cost) {
-      return { success: false, reason: 'Need 25 coins for Target hint!' };
+    let caughtButterfly = false;
+    if (cell.hasButterfly && !this.butterflyCollected) {
+      this.butterflyCollected = true;
+      cell.hasButterfly = false;
+      caughtButterfly = true;
+      this.coins += 25;
     }
 
-    const cell = this.grid[row]?.[col];
-    if (!cell) return { success: false, reason: 'Invalid tile selected.' };
-    if (cell.isRevealed) return { success: false, reason: 'Tile is already revealed.' };
-
-    this.coins -= cost;
-    cell.isRevealed = true;
-    sound.playCardSnap();
-
-    // Check if this reveal completed any words or the level
-    const progress = this.checkWordsCompletedByReveal();
+    this.checkLevelCompletion();
+    this.saveProgress();
 
     return {
       success: true,
-      cell: { row, col, letter: cell.letter },
-      isLevelComplete: progress.isLevelComplete,
-      newlySolvedWords: progress.newlySolvedWords
+      cell: { r: cell.r, c: cell.c, char: cell.char },
+      caughtButterfly,
+      coinsRemaining: this.coins,
+      isLevelComplete: this.isLevelComplete
     };
   }
 
   nextLevel() {
-    if (this.levelIndex < this.levels.length - 1) {
-      this.startLevel(this.levelIndex + 1);
-      return true;
-    }
-    // Loop back to start
-    this.startLevel(0);
-    return true;
+    this.levelIndex = (this.levelIndex + 1) % WOW_LEVELS.length;
+    this.initLevel(this.levelIndex);
+    this.saveProgress();
+    return this.currentLevel;
   }
 }

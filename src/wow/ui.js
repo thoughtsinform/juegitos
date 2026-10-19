@@ -1,764 +1,833 @@
 /**
- * Words of Wonders (WoW) - UI Controller & Touch Anagram Wheel
- * Zen Nature Wonder Aesthetic | Pure Vector Iconography (Zero Emojis)
- * High-performance Canvas Laser Trace & Trigonometric Letter Placement
+ * Words of Wonders (WoW) Interactive UI & Touch Wheel Controller
+ * Features:
+ * - Clean lifecycle management (destroy() removes window pointer & resize listeners)
+ * - Per-Wonder architectural SVG landmark backdrops
+ * - Butterfly bonus tiles on crossword cells
+ * - Responsive touch-drag wheel with dynamic resize recalculation
+ * - Non-blocking toast notifications & Wonder Level Selector modal
  */
 
 import { sound } from '../sound.js';
 import { Icons } from '../icons.js';
+import { WOW_LEVELS, WONDER_LANDMARKS } from './levels.js';
+import { showToast } from '../toast.js';
 
 export class WowUI {
   constructor(engine, container, options = {}) {
     this.engine = engine;
     this.container = container;
-    this.currentUser = options.currentUser || 'Ellen';
+    this.currentUser = options.currentUser || { displayName: 'Ellen', avatar: 'assets/avatars/ellen.png' };
     this.onUserLogout = options.onUserLogout || (() => {});
     this.onUserSwitch = options.onUserSwitch || (() => {});
 
-    // Wheel touch drag state
+    // Wheel drag state
     this.isDragging = false;
-    this.selectedIndices = []; // Indices into this.engine.wheelLetters
-    this.currentPointer = null; // { x, y } relative to wheel
-    this.nodePositions = []; // [{ x, y, letter, el }]
-    this.isTargetMode = false; // Hammer/Target hint active
+    this.selectedIndices = [];
+    this.pointerPos = { x: 0, y: 0 };
+    this.nodePositions = [];
+    this.wheelRect = null;
+    this.hammerMode = false;
+    this.drawerOpen = false;
+    this.previewResetTimer = null;
 
-    this.initDOM();
-    this.initCanvas();
-    this.wireEvents();
+    this.onPointerDown = this.onPointerDown.bind(this);
+    this.onPointerMove = this.onPointerMove.bind(this);
+    this.onPointerUp = this.onPointerUp.bind(this);
+    this.onWindowResize = this.onWindowResize.bind(this);
+
     this.render();
+    window.addEventListener('pointermove', this.onPointerMove, { passive: false });
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('resize', this.onWindowResize);
   }
 
-  initDOM() {
-    this.container.innerHTML = `
-      <div class="wow-game-wrapper" id="wowGameWrapper">
-        <!-- Ambient Scenic Nature Layers -->
-        <div class="wow-backdrop-stars"></div>
-        <div class="wow-backdrop-mountains"></div>
+  destroy() {
+    window.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('resize', this.onWindowResize);
+    if (this.previewResetTimer) {
+      clearTimeout(this.previewResetTimer);
+      this.previewResetTimer = null;
+    }
+  }
 
-        <!-- 1. Top HUD: Wonder Name, Country, Stars, Coins, Bonus Jar -->
+  onWindowResize() {
+    this.initCanvas();
+    this.positionLetterNodes();
+  }
+
+  render() {
+    if (!this.container) return;
+
+    const lvl = this.engine.currentLevel;
+    const landmarkSvg = WONDER_LANDMARKS[((lvl.id - 1) % 4) + 1] || WONDER_LANDMARKS[1];
+
+    this.container.innerHTML = `
+      <div class="wow-game-wrapper" id="wowWrapper" data-wonder-id="${lvl.id}">
+        <!-- Atmospheric Sky & Custom Wonder Landmark Backdrop -->
+        <div class="wow-backdrop-stars"></div>
+        <div class="wow-backdrop-mountains">${landmarkSvg}</div>
+
+        <!-- 1. Top Status HUD -->
         <header class="wow-hud">
-          <div class="wow-level-info">
+          <button type="button" class="wow-level-info-btn" id="wowLevelPickerBtn" title="Tap to choose Wonder Level">
             <div class="wow-level-wonder">
-              <span class="wow-wonder-icon" id="wonderIcon">${Icons.monument('hud-monument-icon', 18)}</span>
-              <span id="wonderTitle">Level 1: Giza</span>
+              <span class="wow-wonder-icon">${Icons.monument('wonder-svg', 18)}</span>
+              <span>${lvl.wonder}</span>
             </div>
-            <div class="wow-level-country" id="wonderCountry">EGYPT</div>
-          </div>
+            <div class="wow-level-country">${lvl.country} • Wonder ${lvl.id} of ${WOW_LEVELS.length}</div>
+          </button>
 
           <div class="wow-hud-stats">
-            <button type="button" class="wow-bonus-jar-btn" id="bonusJarBtn" title="View Bonus Word Jar" aria-label="Bonus words jar">
-              ${Icons.jar('hud-jar-icon', 18)}
-              <span id="bonusJarCount">0/5</span>
+            <button type="button" class="wow-bonus-jar-btn ${this.engine.bonusWords.size > 0 ? 'jar-pulse' : ''}" id="wowBonusJarBtn" title="Bonus Words Collected">
+              <span class="jar-icon">${Icons.jar('jar-svg', 16)}</span>
+              <span id="wowBonusCount">${this.engine.bonusWords.size}</span>
             </button>
-            <div class="wow-stat-pill coins" title="Coins for hints">
-              ${Icons.coin('hud-coin-icon', 16)}
-              <span id="hudCoinsVal">100</span>
+
+            <div class="wow-stat-pill stars" title="Wonder Stars">
+              <span class="stat-icon">${Icons.star('star-svg', 15)}</span>
+              <span id="wowStarsVal">${this.engine.stars}</span>
             </div>
-            <div class="wow-stat-pill stars" title="Total Stars">
-              ${Icons.star('hud-star-icon', 16)}
-              <span id="hudStarsVal">0</span>
+
+            <div class="wow-stat-pill coins" title="Gold Coins">
+              <span class="stat-icon">${Icons.coin('coin-svg', 15)}</span>
+              <span id="wowCoinsVal">${this.engine.coins}</span>
             </div>
           </div>
         </header>
 
-        <!-- 2. Crossword Matrix Board (Upper Half) -->
-        <main class="wow-board-area" id="boardArea">
-          <div class="wow-crossword-grid" id="crosswordGrid"></div>
-        </main>
+        <!-- 2. Upper Crossword Matrix Area -->
+        <section class="wow-board-area">
+          <div class="wow-crossword-grid" id="wowCrosswordGrid"
+               style="grid-template-columns: repeat(${lvl.cols}, var(--cell-size)); grid-template-rows: repeat(${lvl.rows}, var(--cell-size));">
+            ${this.renderGridCellsHTML()}
+          </div>
+        </section>
 
-        <!-- 3. Floating Word Preview Pill -->
-        <div class="wow-preview-wrapper">
-          <div class="wow-word-preview" id="wordPreviewPill">
-            <span class="wow-word-text" id="wordPreviewText">CONNECT LETTERS</span>
+        <!-- 3. Lower Control Hub: Floating Word Preview + Anagram Wheel + Tools -->
+        <section class="wow-controls-area">
+          <div class="wow-preview-wrapper">
+            <div class="wow-word-preview" id="wowWordPreview">
+              <span class="wow-word-text" id="wowWordText"></span>
+            </div>
+          </div>
+
+          <div class="wow-wheel-dock">
+            <!-- Left Tool Column -->
+            <div class="wow-tools-col">
+              <button type="button" class="wow-tool-btn" id="wowRandomHintBtn" title="Reveal First Letter of a Word (15 Coins)">
+                <span class="tool-icon">${Icons.lightbulb('tool-svg', 22)}</span>
+                <span class="tool-cost-badge">15</span>
+              </button>
+              <button type="button" class="wow-tool-btn" id="wowHammerHintBtn" title="Target Reveal Any Tile (25 Coins)">
+                <span class="tool-icon">${Icons.hammer('tool-svg', 22)}</span>
+                <span class="tool-cost-badge">25</span>
+              </button>
+            </div>
+
+            <!-- Center Anagram Touch Wheel -->
+            <div class="wow-wheel-disc" id="wowWheelDisc">
+              <canvas class="wow-wheel-canvas" id="wowWheelCanvas"></canvas>
+
+              <button type="button" class="wow-wheel-center-shuffle" id="wowCenterShuffleBtn" title="Shuffle Wheel Letters" aria-label="Shuffle Letters">
+                ${Icons.shuffle('shuffle-svg', 20)}
+              </button>
+
+              <div id="wowWheelNodesContainer">
+                ${this.renderWheelNodesHTML()}
+              </div>
+            </div>
+
+            <!-- Right Tool Column -->
+            <div class="wow-tools-col">
+              <button type="button" class="wow-tool-btn" id="wowShuffleSideBtn" title="Shuffle Letters">
+                <span class="tool-icon">${Icons.shuffle('tool-svg', 20)}</span>
+              </button>
+              <button type="button" class="wow-tool-btn" id="wowInfoBtn" title="Wonder Guide & Level Select">
+                <span class="tool-icon">${Icons.monument('tool-svg', 20)}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Bottom Collapsible Settings Drawer -->
+        <div class="bottom-drawer-wrapper ${this.drawerOpen ? 'is-open' : ''}" id="wowBottomDrawer">
+          <button class="drawer-chevron-btn" id="wowDrawerToggleBtn" aria-label="Toggle Game Menu" title="Controls & Player Menu">
+            ${Icons.chevronUp('drawer-chevron-svg', 18)}
+          </button>
+
+          <div class="drawer-content">
+            <div class="drawer-quick-actions">
+              <button class="drawer-action-btn" id="wowDrawerHintBtn">
+                <span class="btn-icon">${Icons.lightbulb('action-svg', 20)}</span>
+                <span class="btn-text">Hint (15)</span>
+              </button>
+              <button class="drawer-action-btn" id="wowDrawerShuffleBtn">
+                <span class="btn-icon">${Icons.shuffle('action-svg', 20)}</span>
+                <span class="btn-text">Shuffle</span>
+              </button>
+              <button class="drawer-action-btn" id="wowDrawerResetLvlBtn">
+                <span class="btn-icon">${Icons.restart('action-svg', 20)}</span>
+                <span class="btn-text">Replay</span>
+              </button>
+              <button class="drawer-action-btn" id="wowDrawerNextLvlBtn">
+                <span class="btn-icon">${Icons.sparkle('action-svg', 20)}</span>
+                <span class="btn-text">Skip Lvl</span>
+              </button>
+            </div>
+
+            <div class="drawer-footer-section">
+              <div class="player-info-badge">
+                <img class="player-avatar-img" src="${this.currentUser.avatar}" alt="${this.currentUser.displayName}">
+                <span class="player-name">Playing as <strong>${this.currentUser.displayName}</strong></span>
+              </div>
+              <div class="drawer-footer-actions">
+                <button class="drawer-link-btn" id="wowDrawerFreeCoinsBtn">+100 Coins</button>
+                <button class="drawer-link-btn" id="wowDrawerSwitchUserBtn">Switch Player</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- 4. Lower Control Hub: Wheel & Flanking Action Tools -->
-        <footer class="wow-controls-area">
-          <div class="wow-wheel-dock">
-            <!-- Left Action Tools -->
-            <div class="wow-tools-col tools-left">
-              <button type="button" class="wow-tool-btn tool-hint" id="hintLightbulbBtn" title="Reveal random letter (25 coins)" aria-label="Random letter hint">
-                <span class="tool-icon-wrap">${Icons.lightbulb('tool-svg', 20)}</span>
-                <span class="tool-cost-badge">25</span>
-              </button>
-              <button type="button" class="wow-tool-btn tool-target" id="hintHammerBtn" title="Target specific tile (25 coins)" aria-label="Target tile hint">
-                <span class="tool-icon-wrap">${Icons.hammer('tool-svg', 20)}</span>
-                <span class="tool-cost-badge">25</span>
-              </button>
-            </div>
-
-            <!-- The Touch Anagram Wheel Disc -->
-            <div class="wow-wheel-disc" id="wheelDisc">
-              <canvas class="wow-wheel-canvas" id="wheelCanvas"></canvas>
-              
-              <!-- Center Shuffle Button in Wheel Hub -->
-              <button type="button" class="wow-wheel-center-shuffle" id="centerShuffleBtn" title="Shuffle letters" aria-label="Shuffle letters">
-                ${Icons.shuffle('center-shuffle-svg', 18)}
-              </button>
-
-              <!-- Letter nodes will be injected here via trigonometry -->
-              <div id="letterNodesContainer"></div>
-            </div>
-
-            <!-- Right Action Tools -->
-            <div class="wow-tools-col tools-right">
-              <button type="button" class="wow-tool-btn tool-shuffle" id="flankShuffleBtn" title="Shuffle letters" aria-label="Shuffle letters">
-                <span class="tool-icon-wrap">${Icons.shuffle('tool-svg', 18)}</span>
-              </button>
-              <button type="button" class="wow-tool-btn tool-info" id="levelInfoBtn" title="Level information & rules" aria-label="Game rules and information">
-                <span class="tool-icon-wrap">${Icons.monument('tool-svg', 18)}</span>
-              </button>
-            </div>
-          </div>
-        </footer>
-
-        <!-- 5. Bonus Word Jar Modal -->
-        <div class="wow-modal-overlay" id="bonusJarModal">
+        <!-- 5. Bonus Words Jar Modal -->
+        <div class="wow-modal-overlay" id="wowBonusModal">
           <div class="wow-modal-card">
             <div class="wow-modal-header">
-              <div class="wow-modal-title">
-                ${Icons.jar('modal-jar-icon', 22)}
-                <span>Bonus Words Jar</span>
-              </div>
-              <button type="button" class="wow-modal-close-btn" id="closeBonusJarBtn" aria-label="Close">${Icons.close('', 16)}</button>
+              <div class="wow-modal-title">${Icons.jar('modal-svg', 22)} <span>Bonus Words Jar</span></div>
+              <button type="button" class="wow-modal-close-btn" id="wowCloseBonusModalBtn">${Icons.close('', 18)}</button>
             </div>
-            <p style="font-size: 0.88rem; color: #94a3b8; margin: 0; line-height: 1.4;">
-              Discovered valid English words that aren't part of the crossword board. Every 5 bonus words award <b>+1 Star & +25 Coins</b>!
+            <p style="font-size: 0.85rem; color: #cbd5e1;">
+              Valid dictionary words not on the board earn <strong>+5 Bonus Coins</strong> each!
             </p>
-            <div class="wow-bonus-words-list" id="bonusWordsList">
-              <span style="color: #64748b; font-size: 0.82rem; width: 100%;">No bonus words discovered yet. Try spelling extra words!</span>
-            </div>
-            <button type="button" class="wow-btn-primary" id="bonusModalOkBtn">Keep Playing</button>
+            <div class="wow-bonus-words-list" id="wowBonusWordsList"></div>
           </div>
         </div>
 
-        <!-- 6. Wonder Info & Rules Modal -->
-        <div class="wow-modal-overlay" id="levelInfoModal">
+        <!-- 6. Wonder Guide & Level Select Modal -->
+        <div class="wow-modal-overlay" id="wowInfoModal">
           <div class="wow-info-card">
             <div class="wow-modal-header">
-              <div class="wow-modal-title">
-                ${Icons.monument('info-modal-icon', 22)}
-                <span id="infoModalWonderTitle">Wonder Guide</span>
-              </div>
-              <button type="button" class="wow-modal-close-btn" id="closeInfoModalBtn" aria-label="Close">${Icons.close('', 16)}</button>
+              <div class="wow-modal-title">${Icons.monument('modal-svg', 22)} <span>Wonders & Guide</span></div>
+              <button type="button" class="wow-modal-close-btn" id="wowCloseInfoModalBtn">${Icons.close('', 18)}</button>
             </div>
-            
-            <p id="infoModalWonderDesc" style="font-size: 0.88rem; color: #cbd5e1; margin: 0; line-height: 1.45;"></p>
 
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <div class="wow-info-guide-row">
-                <div class="wow-info-icon-badge">${Icons.tiles('', 18)}</div>
-                <div><b>Crossword:</b> Drag across letter nodes on the wheel to spell words and solve the crossword grid.</div>
-              </div>
-              <div class="wow-info-guide-row">
-                <div class="wow-info-icon-badge">${Icons.coin('', 18)}</div>
-                <div><b>Coins:</b> Earn +10 per word and +50 per completed Wonder. Spend 25 coins on Lightbulb or Target hints when stuck.</div>
-              </div>
-              <div class="wow-info-guide-row">
-                <div class="wow-info-icon-badge">${Icons.star('', 18)}</div>
-                <div><b>Stars:</b> Earn +3 stars per completed Wonder and +1 per 5 bonus words. Compete on the Family Leaderboard!</div>
+            <div class="wow-levels-MiniGrid" id="wowLevelsPickerGrid">
+              ${WOW_LEVELS.map((w, idx) => `
+                <button type="button" class="wow-lvl-chip ${idx === this.engine.levelIndex ? 'active' : ''}" data-lvl="${idx}">
+                  <span class="w-num">#${w.id}</span>
+                  <span class="w-name">${w.wonder}</span>
+                </button>
+              `).join('')}
+            </div>
+
+            <div class="wow-info-guide-row">
+              <div class="wow-info-icon-badge">${Icons.lightbulb('', 18)}</div>
+              <div>
+                <strong>Smart Hint (15 Coins)</strong><br>
+                Reveals the first missing letter of an unsolved word on the board.
               </div>
             </div>
 
-            <button type="button" class="wow-btn-primary" id="infoModalOkBtn">Back to Puzzle</button>
+            <div class="wow-info-guide-row">
+              <div class="wow-info-icon-badge">${Icons.hammer('', 18)}</div>
+              <div>
+                <strong>Target Hammer (25 Coins)</strong><br>
+                Tap the Hammer, then tap any specific crossword tile you choose to reveal it.
+              </div>
+            </div>
+
+            <div class="wow-info-guide-row">
+              <div class="wow-info-icon-badge">${Icons.butterfly('', 18)}</div>
+              <div>
+                <strong>Golden Butterfly Tile (+25 Coins)</strong><br>
+                Solve a word across a Butterfly tile to collect a 25-coin treasure bonus!
+              </div>
+            </div>
+
+            <button type="button" class="btn-primary" id="wowGotItInfoBtn" style="margin-top: 4px;">
+              Back to Puzzle
+            </button>
           </div>
         </div>
 
-        <!-- 7. Wonder Victory Celebration Modal -->
-        <div class="wow-modal-overlay" id="victoryModal">
+        <!-- 7. Level Victory Celebration Modal -->
+        <div class="wow-modal-overlay" id="wowVictoryModal">
           <div class="wow-victory-card">
-            <span class="wow-victory-trophy">${Icons.trophy('vic-trophy-svg', 54)}</span>
-            <h2 style="color: #fef3c7; font-size: 1.5rem; margin: 0;">Wonder Completed!</h2>
-            <p id="vicWonderName" style="color: #38bdf8; font-weight: 700; margin: 0; font-size: 1.1rem;">Great Pyramid of Giza</p>
-            <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">All crossword words solved!</p>
-            <div style="display: flex; gap: 16px; margin: 8px 0;">
-              <span style="color: #fbbf24; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
-                ${Icons.star('', 18)} +3 Stars
-              </span>
-              <span style="color: #fcd34d; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
-                ${Icons.coin('', 18)} +50 Coins
-              </span>
+            <div class="wow-victory-trophy">${Icons.trophy('victory-trophy-svg', 54)}</div>
+            <div class="wow-victory-wonder" id="wowWinWonderTitle">${lvl.wonder}</div>
+            <h2 style="font-size: 1.55rem; font-weight: 800;">Wonder Completed!</h2>
+            <p style="font-size: 0.9rem; color: #cbd5e1;">Splendid vocabulary, ${this.currentUser.displayName}!</p>
+
+            <div class="wow-victory-rewards">
+              <div class="wow-reward-box">
+                <span class="wow-reward-val">${Icons.coin('reward-svg', 18)} +40</span>
+                <span class="wow-reward-lbl">Level Bonus</span>
+              </div>
+              <div class="wow-reward-box">
+                <span class="wow-reward-val">${Icons.star('reward-svg', 18)} +3</span>
+                <span class="wow-reward-lbl">Wonder Stars</span>
+              </div>
             </div>
-            <button type="button" class="wow-btn-primary" id="nextLevelBtn">Next Wonder →</button>
+
+            <button type="button" class="btn-primary" id="wowNextLevelBtn">
+              Continue to Next Wonder
+            </button>
           </div>
         </div>
       </div>
     `;
 
-    this.boardEl = this.container.querySelector('#crosswordGrid');
-    this.wheelDiscEl = this.container.querySelector('#wheelDisc');
-    this.canvasEl = this.container.querySelector('#wheelCanvas');
-    this.letterContainerEl = this.container.querySelector('#letterNodesContainer');
-    this.previewPillEl = this.container.querySelector('#wordPreviewPill');
-    this.previewTextEl = this.container.querySelector('#wordPreviewText');
-    this.bonusJarModalEl = this.container.querySelector('#bonusJarModal');
-    this.infoModalEl = this.container.querySelector('#levelInfoModal');
-    this.victoryModalEl = this.container.querySelector('#victoryModal');
+    this.initCanvas();
+    this.positionLetterNodes();
+    this.wireEvents();
+  }
+
+  renderGridCellsHTML() {
+    const { rows, cols } = this.engine.currentLevel;
+    let html = '';
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = this.engine.grid[r][c];
+        if (!cell.active) {
+          html += `<div class="wow-cell is-empty" data-r="${r}" data-c="${c}"></div>`;
+        } else {
+          const stateClass = cell.revealed ? 'is-revealed' : 'is-slot';
+          const targetClass = (!cell.revealed && this.hammerMode) ? 'target-selectable' : '';
+          const butterflyBadge = (!cell.revealed && cell.hasButterfly)
+            ? `<span class="wow-butterfly-badge" title="Butterfly Bonus (+25 Coins)">${Icons.butterfly('bfly-svg', 16)}</span>`
+            : '';
+          html += `
+            <div class="wow-cell ${stateClass} ${targetClass}" id="wow_cell_${r}_${c}" data-r="${r}" data-c="${c}">
+              ${cell.revealed ? cell.char : butterflyBadge}
+            </div>
+          `;
+        }
+      }
+    }
+    return html;
+  }
+
+  renderWheelNodesHTML() {
+    return this.engine.wheelLetters
+      .map((letter, idx) => `
+        <div class="wow-letter-node" id="wow_node_${idx}" data-index="${idx}" data-letter="${letter}">
+          ${letter}
+        </div>
+      `)
+      .join('');
   }
 
   initCanvas() {
-    if (!this.canvasEl || !this.wheelDiscEl) return;
+    this.wheelEl = this.container?.querySelector('#wowWheelDisc');
+    this.canvas = this.container?.querySelector('#wowWheelCanvas');
+    if (!this.wheelEl || !this.canvas) return;
+
+    const rect = this.wheelEl.getBoundingClientRect();
+    this.wheelRect = rect;
     const dpr = window.devicePixelRatio || 1;
-    const rect = this.wheelDiscEl.getBoundingClientRect();
-    const size = rect.width || 280;
+    const w = rect.width || 250;
+    const h = rect.height || 250;
 
-    this.canvasEl.width = size * dpr;
-    this.canvasEl.height = size * dpr;
-    this.canvasEl.style.width = `${size}px`;
-    this.canvasEl.style.height = `${size}px`;
+    this.canvas.width = w * dpr;
+    this.canvas.height = h * dpr;
+    this.ctx = this.canvas.getContext('2d');
+    if (this.ctx) {
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
 
-    this.ctx = this.canvasEl.getContext('2d');
-    this.ctx.scale(dpr, dpr);
-    this.dpr = dpr;
+  positionLetterNodes() {
+    if (!this.wheelEl) return;
+    const w = this.wheelEl.clientWidth || 250;
+    const h = this.wheelEl.clientHeight || 250;
+    const centerX = w / 2;
+    const centerY = h / 2;
+    const radius = w * 0.34;
+
+    const count = this.engine.wheelLetters.length;
+    this.nodePositions = [];
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i * (2 * Math.PI)) / count - Math.PI / 2;
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      this.nodePositions.push({ x, y });
+
+      const nodeEl = this.container.querySelector(`#wow_node_${i}`);
+      if (nodeEl) {
+        nodeEl.style.left = `${x}px`;
+        nodeEl.style.top = `${y}px`;
+      }
+    }
   }
 
   wireEvents() {
-    // 1. Drag interaction on Wheel Disc (PointerEvents for touch + mouse)
-    if (this.wheelDiscEl) {
-      this.wheelDiscEl.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-      window.addEventListener('pointermove', (e) => this.onPointerMove(e));
-      window.addEventListener('pointerup', (e) => this.onPointerUp(e));
-      window.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+    if (this.wheelEl) {
+      this.wheelEl.addEventListener('pointerdown', this.onPointerDown);
     }
 
-    // 2. Shuffle Buttons
     const doShuffle = () => {
-      this.triggerHaptic('light');
-      this.engine.shuffleLetters();
-      this.positionLetterNodes();
+      if (this.isDragging) return;
+      sound.playCardSlide();
+      const centerBtn = this.container.querySelector('#wowCenterShuffleBtn');
+      centerBtn?.classList.add('is-spinning');
+      setTimeout(() => centerBtn?.classList.remove('is-spinning'), 450);
+
+      this.engine.shuffleWheel();
+      const nodesContainer = this.container.querySelector('#wowWheelNodesContainer');
+      if (nodesContainer) {
+        nodesContainer.innerHTML = this.renderWheelNodesHTML();
+        this.positionLetterNodes();
+      }
     };
 
-    this.container.querySelector('#centerShuffleBtn')?.addEventListener('click', (e) => {
+    this.container.querySelector('#wowCenterShuffleBtn')?.addEventListener('click', (e) => {
       e.stopPropagation();
       doShuffle();
     });
+    this.container.querySelector('#wowShuffleSideBtn')?.addEventListener('click', doShuffle);
+    this.container.querySelector('#wowDrawerShuffleBtn')?.addEventListener('click', doShuffle);
 
-    this.container.querySelector('#flankShuffleBtn')?.addEventListener('click', () => {
-      doShuffle();
+    const doRandomHint = () => {
+      const res = this.engine.useRandomHint();
+      if (!res.success) {
+        if (res.reason === 'insufficient_coins') {
+          this.shakeCoinsPill();
+          showToast(`Need ${res.cost} coins for a Hint! Tap +100 Coins in menu.`, 'warning', 2500);
+        } else if (res.reason === 'board_full') {
+          if (this.engine.checkLevelCompletion()) {
+            this.showVictoryModal();
+          }
+        }
+        return;
+      }
+
+      sound.playCardSnap();
+      this.revealSingleCellDOM(res.cell.r, res.cell.c, res.cell.char);
+      this.updateHUDStats();
+      if (res.caughtButterfly) {
+        showToast('Butterfly caught! +25 Bonus Coins!', 'success', 2200);
+      }
+
+      if (res.isLevelComplete) {
+        setTimeout(() => this.showVictoryModal(), 650);
+      }
+    };
+
+    this.container.querySelector('#wowRandomHintBtn')?.addEventListener('click', doRandomHint);
+    this.container.querySelector('#wowDrawerHintBtn')?.addEventListener('click', doRandomHint);
+
+    const hammerBtn = this.container.querySelector('#wowHammerHintBtn');
+    hammerBtn?.addEventListener('click', () => {
+      if (!this.hammerMode && this.engine.coins < 25) {
+        this.shakeCoinsPill();
+        showToast('Need 25 coins for Target Hammer!', 'warning', 2400);
+        return;
+      }
+      this.toggleHammerMode(!this.hammerMode);
     });
 
-    // 3. Hint 1: Lightbulb
-    this.container.querySelector('#hintLightbulbBtn')?.addEventListener('click', () => {
-      this.handleLightbulbHint();
+    const gridEl = this.container.querySelector('#wowCrosswordGrid');
+    gridEl?.addEventListener('click', (e) => {
+      if (!this.hammerMode) return;
+      const cellEl = e.target.closest('.wow-cell');
+      if (!cellEl) return;
+
+      const r = parseInt(cellEl.dataset.r, 10);
+      const c = parseInt(cellEl.dataset.c, 10);
+      const res = this.engine.useTargetedHint(r, c);
+
+      if (!res.success) {
+        if (res.reason === 'insufficient_coins') {
+          this.shakeCoinsPill();
+          showToast('Need 25 coins for Target Hammer!', 'warning', 2400);
+        }
+        this.toggleHammerMode(false);
+        return;
+      }
+
+      sound.playCardSnap();
+      this.toggleHammerMode(false);
+      this.revealSingleCellDOM(res.cell.r, res.cell.c, res.cell.char);
+      this.updateHUDStats();
+
+      if (res.caughtButterfly) {
+        showToast('Butterfly caught! +25 Bonus Coins!', 'success', 2200);
+      }
+
+      if (res.isLevelComplete) {
+        setTimeout(() => this.showVictoryModal(), 650);
+      }
     });
 
-    // 4. Hint 2: Target / Hammer Mode
-    this.container.querySelector('#hintHammerBtn')?.addEventListener('click', () => {
-      this.toggleHammerMode();
+    // Bonus Jar Modal
+    const bonusModal = this.container.querySelector('#wowBonusModal');
+    this.container.querySelector('#wowBonusJarBtn')?.addEventListener('click', () => {
+      sound.playCardSlide();
+      this.renderBonusWordsList();
+      bonusModal?.classList.add('is-active');
+    });
+    this.container.querySelector('#wowCloseBonusModalBtn')?.addEventListener('click', () => {
+      bonusModal?.classList.remove('is-active');
+    });
+    bonusModal?.addEventListener('click', (e) => {
+      if (e.target === bonusModal) bonusModal.classList.remove('is-active');
     });
 
-    // 5. Bonus Jar Modal
-    this.container.querySelector('#bonusJarBtn')?.addEventListener('click', () => {
-      this.openBonusJarModal();
+    // Wonder Guide & Level Select Modal
+    const infoModal = this.container.querySelector('#wowInfoModal');
+    const openInfoModal = () => {
+      sound.playCardSlide();
+      infoModal?.classList.add('is-active');
+    };
+    this.container.querySelector('#wowInfoBtn')?.addEventListener('click', openInfoModal);
+    this.container.querySelector('#wowLevelPickerBtn')?.addEventListener('click', openInfoModal);
+
+    this.container.querySelector('#wowCloseInfoModalBtn')?.addEventListener('click', () => {
+      infoModal?.classList.remove('is-active');
+    });
+    this.container.querySelector('#wowGotItInfoBtn')?.addEventListener('click', () => {
+      infoModal?.classList.remove('is-active');
+    });
+    infoModal?.addEventListener('click', (e) => {
+      if (e.target === infoModal) infoModal.classList.remove('is-active');
     });
 
-    this.container.querySelector('#closeBonusJarBtn')?.addEventListener('click', () => {
-      this.bonusJarModalEl.classList.remove('is-active');
+    this.container.querySelectorAll('.wow-lvl-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.lvl, 10);
+        sound.playPop(1.1);
+        infoModal?.classList.remove('is-active');
+        this.engine.initLevel(idx);
+        this.engine.saveProgress();
+        this.render();
+      });
     });
 
-    this.container.querySelector('#bonusModalOkBtn')?.addEventListener('click', () => {
-      this.bonusJarModalEl.classList.remove('is-active');
+    // Bottom Drawer Toggle & Actions
+    const drawer = this.container.querySelector('#wowBottomDrawer');
+    this.container.querySelector('#wowDrawerToggleBtn')?.addEventListener('click', () => {
+      sound.playCardSlide();
+      this.drawerOpen = !this.drawerOpen;
+      drawer?.classList.toggle('is-open', this.drawerOpen);
     });
 
-    // 6. Level Info & Rules Modal
-    this.container.querySelector('#levelInfoBtn')?.addEventListener('click', () => {
-      this.openInfoModal();
+    this.container.querySelector('#wowDrawerResetLvlBtn')?.addEventListener('click', () => {
+      sound.playDealWhoosh(0);
+      this.engine.initLevel(this.engine.levelIndex);
+      this.render();
+      showToast('Wonder level restarted', 'info', 1800);
     });
 
-    this.container.querySelector('#closeInfoModalBtn')?.addEventListener('click', () => {
-      this.infoModalEl.classList.remove('is-active');
+    this.container.querySelector('#wowDrawerNextLvlBtn')?.addEventListener('click', () => {
+      sound.playDealWhoosh(0);
+      this.engine.nextLevel();
+      this.render();
     });
 
-    this.container.querySelector('#infoModalOkBtn')?.addEventListener('click', () => {
-      this.infoModalEl.classList.remove('is-active');
+    this.container.querySelector('#wowDrawerFreeCoinsBtn')?.addEventListener('click', () => {
+      sound.playStepGoalMet();
+      this.engine.coins += 100;
+      this.engine.saveProgress();
+      this.updateHUDStats();
+      showToast('+100 Complimentary Coins Added!', 'success', 2000);
     });
 
-    // 7. Victory Modal Next Level
-    this.container.querySelector('#nextLevelBtn')?.addEventListener('click', () => {
-      this.victoryModalEl.classList.remove('is-active');
+    this.container.querySelector('#wowDrawerSwitchUserBtn')?.addEventListener('click', () => {
+      this.onUserSwitch();
+    });
+
+    this.container.querySelector('#wowNextLevelBtn')?.addEventListener('click', () => {
+      sound.playDealWhoosh(0);
       this.engine.nextLevel();
       this.render();
     });
   }
 
-  // ========================================================
-  // TRIGONOMETRIC LETTER WHEEL LAYOUT
-  // ========================================================
-  positionLetterNodes() {
-    if (!this.letterContainerEl || !this.wheelDiscEl) return;
-    this.letterContainerEl.innerHTML = '';
-    this.nodePositions = [];
-
-    const rect = this.wheelDiscEl.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const radius = rect.width * 0.355; // Distance from center to letter node center
-
-    const letters = this.engine.wheelLetters;
-    const total = letters.length;
-
-    // Distribute evenly around the circle starting from top (-pi/2)
-    const angleStep = (2 * Math.PI) / total;
-
-    for (let i = 0; i < total; i++) {
-      const angle = -Math.PI / 2 + i * angleStep;
-      const x = cx + radius * Math.cos(angle);
-      const y = cy + radius * Math.sin(angle);
-
-      const nodeEl = document.createElement('div');
-      nodeEl.className = 'wow-letter-node';
-      nodeEl.dataset.index = i.toString();
-      nodeEl.textContent = letters[i];
-      nodeEl.style.left = `${x}px`;
-      nodeEl.style.top = `${y}px`;
-
-      this.letterContainerEl.appendChild(nodeEl);
-
-      this.nodePositions.push({
-        index: i,
-        letter: letters[i],
-        x,
-        y,
-        radius: 30, // Hit testing radius
-        el: nodeEl
-      });
+  toggleHammerMode(active) {
+    if (this.previewResetTimer) {
+      clearTimeout(this.previewResetTimer);
+      this.previewResetTimer = null;
     }
+    this.hammerMode = active;
+    const hammerBtn = this.container.querySelector('#wowHammerHintBtn');
+    hammerBtn?.classList.toggle('is-active-tool', active);
 
-    this.clearCanvas();
-  }
+    this.container.querySelectorAll('.wow-cell.is-slot').forEach(el => {
+      el.classList.toggle('target-selectable', active);
+    });
 
-  // ========================================================
-  // TOUCH / MOUSE DRAG & HIT TESTING
-  // ========================================================
-  getWheelRelativeCoords(e) {
-    const rect = this.wheelDiscEl.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-  }
-
-  findNodeAtCoords(coords) {
-    for (const node of this.nodePositions) {
-      const dx = coords.x - node.x;
-      const dy = coords.y - node.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= node.radius) {
-        return node;
-      }
+    const previewEl = this.container.querySelector('#wowWordPreview');
+    const textEl = this.container.querySelector('#wowWordText');
+    if (active) {
+      if (textEl) textEl.innerHTML = `${Icons.hammer('inline-hammer-svg', 16)} <span>TAP ANY TILE TO REVEAL</span>`;
+      previewEl?.classList.add('is-target-mode');
+    } else {
+      if (textEl) textEl.textContent = '';
+      previewEl?.classList.remove('is-target-mode');
     }
-    return null;
   }
 
   onPointerDown(e) {
-    if (this.isTargetMode) return;
-    const coords = this.getWheelRelativeCoords(e);
-    const node = this.findNodeAtCoords(coords);
+    if (e.target.closest('#wowCenterShuffleBtn')) return;
+    if (this.hammerMode) this.toggleHammerMode(false);
+    if (this.previewResetTimer) {
+      clearTimeout(this.previewResetTimer);
+      this.previewResetTimer = null;
+    }
 
-    if (node) {
+    this.initCanvas();
+    this.positionLetterNodes();
+
+    const hitIdx = this.getHitNodeIndex(e.clientX, e.clientY);
+    if (hitIdx !== -1) {
+      e.preventDefault();
       this.isDragging = true;
-      this.selectedIndices = [node.index];
-      this.currentPointer = coords;
-
-      sound.initAudio();
-      sound.playCardSnap();
-      this.triggerHaptic('light');
-
-      this.updateWheelSelectionVisuals();
-      this.updateWordPreview();
-      this.drawConnectingLines();
+      this.selectedIndices = [hitIdx];
+      this.updateRelativePointer(e.clientX, e.clientY);
+      sound.playCardSlide();
+      this.syncWheelVisuals();
+      this.drawLaserTrace();
     }
   }
 
   onPointerMove(e) {
     if (!this.isDragging) return;
-    const coords = this.getWheelRelativeCoords(e);
-    this.currentPointer = coords;
+    e.preventDefault();
 
-    const node = this.findNodeAtCoords(coords);
-    if (node) {
-      const existingIdx = this.selectedIndices.indexOf(node.index);
+    this.updateRelativePointer(e.clientX, e.clientY);
+    const hitIdx = this.getHitNodeIndex(e.clientX, e.clientY);
 
-      if (existingIdx === -1) {
-        // New letter added to trail!
-        this.selectedIndices.push(node.index);
-        sound.playCardSnap();
-        this.triggerHaptic('light');
-        this.updateWheelSelectionVisuals();
-        this.updateWordPreview();
-      } else if (existingIdx === this.selectedIndices.length - 2) {
-        // Backtracked one letter: pop last selected
+    if (hitIdx !== -1) {
+      const len = this.selectedIndices.length;
+      if (len >= 2 && hitIdx === this.selectedIndices[len - 2]) {
         this.selectedIndices.pop();
         sound.playCardSlide();
-        this.triggerHaptic('light');
-        this.updateWheelSelectionVisuals();
-        this.updateWordPreview();
+        this.syncWheelVisuals();
+      } else if (!this.selectedIndices.includes(hitIdx)) {
+        this.selectedIndices.push(hitIdx);
+        sound.playCardSlide();
+        this.syncWheelVisuals();
       }
     }
 
-    this.drawConnectingLines();
+    this.drawLaserTrace();
   }
 
   onPointerUp() {
     if (!this.isDragging) return;
     this.isDragging = false;
-    this.currentPointer = null;
 
-    const spelledWord = this.selectedIndices
-      .map(idx => this.nodePositions[idx]?.letter || '')
+    const candidateWord = this.selectedIndices
+      .map(i => this.engine.wheelLetters[i])
       .join('');
 
-    this.handleWordSubmit(spelledWord);
-    this.selectedIndices = [];
-    this.updateWheelSelectionVisuals();
     this.clearCanvas();
-  }
-
-  updateWheelSelectionVisuals() {
-    this.nodePositions.forEach(node => {
-      const isSelected = this.selectedIndices.includes(node.index);
-      node.el.classList.toggle('is-selected', isSelected);
+    this.container.querySelectorAll('.wow-letter-node').forEach(el => {
+      el.classList.remove('is-selected');
     });
-  }
 
-  // ========================================================
-  // CANVAS LASER LINE DRAWING
-  // ========================================================
-  clearCanvas() {
-    if (!this.ctx || !this.canvasEl) return;
-    this.ctx.clearRect(0, 0, this.canvasEl.width / this.dpr, this.canvasEl.height / this.dpr);
-  }
-
-  drawConnectingLines() {
-    this.clearCanvas();
-    if (this.selectedIndices.length === 0 || !this.ctx) return;
-
-    const points = this.selectedIndices.map(idx => ({
-      x: this.nodePositions[idx].x,
-      y: this.nodePositions[idx].y
-    }));
-
-    if (this.currentPointer) {
-      points.push(this.currentPointer);
-    }
-
-    if (points.length < 2) return;
-
-    this.ctx.save();
-    this.ctx.lineCap = 'round';
-    this.ctx.lineJoin = 'round';
-
-    // Outer Cyan Glow
-    this.ctx.beginPath();
-    this.ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
-    }
-    this.ctx.lineWidth = 14;
-    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
-    this.ctx.stroke();
-
-    // Medium Laser Line
-    this.ctx.beginPath();
-    this.ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
-    }
-    this.ctx.lineWidth = 6;
-    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
-    this.ctx.stroke();
-
-    // Inner White Core
-    this.ctx.beginPath();
-    this.ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
-    }
-    this.ctx.lineWidth = 2.5;
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.stroke();
-
-    this.ctx.restore();
-  }
-
-  // ========================================================
-  // FLOATING WORD PREVIEW
-  // ========================================================
-  updateWordPreview() {
-    if (!this.previewPillEl || !this.previewTextEl) return;
-    const word = this.selectedIndices
-      .map(idx => this.nodePositions[idx]?.letter || '')
-      .join('');
-
-    if (word.length > 0) {
-      this.previewTextEl.textContent = word;
-      this.previewPillEl.className = 'wow-word-preview is-typing';
+    if (candidateWord.length >= 2) {
+      this.handleWordSubmission(candidateWord);
     } else {
       this.resetWordPreview();
     }
+
+    this.selectedIndices = [];
+  }
+
+  updateRelativePointer(clientX, clientY) {
+    if (!this.wheelRect) return;
+    this.pointerPos = {
+      x: clientX - this.wheelRect.left,
+      y: clientY - this.wheelRect.top
+    };
+  }
+
+  getHitNodeIndex(clientX, clientY) {
+    if (!this.wheelRect) return -1;
+    const relX = clientX - this.wheelRect.left;
+    const relY = clientY - this.wheelRect.top;
+    const hitRadius = 31;
+
+    for (let i = 0; i < this.nodePositions.length; i++) {
+      const pos = this.nodePositions[i];
+      const dx = relX - pos.x;
+      const dy = relY - pos.y;
+      if (Math.sqrt(dx * dx + dy * dy) <= hitRadius) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  syncWheelVisuals() {
+    this.container.querySelectorAll('.wow-letter-node').forEach((el, idx) => {
+      el.classList.toggle('is-selected', this.selectedIndices.includes(idx));
+    });
+
+    const word = this.selectedIndices.map(i => this.engine.wheelLetters[i]).join('');
+    const previewEl = this.container.querySelector('#wowWordPreview');
+    const textEl = this.container.querySelector('#wowWordText');
+
+    if (textEl) textEl.textContent = word;
+    if (previewEl) {
+      previewEl.className = 'wow-word-preview is-typing';
+    }
+  }
+
+  drawLaserTrace() {
+    if (!this.ctx || !this.wheelRect) return;
+    this.clearCanvas();
+
+    if (this.selectedIndices.length === 0) return;
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    this.selectedIndices.forEach((nodeIdx, i) => {
+      const pt = this.nodePositions[nodeIdx];
+      if (!pt) return;
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.lineTo(this.pointerPos.x, this.pointerPos.y);
+
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+    ctx.lineWidth = 14;
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  clearCanvas() {
+    if (!this.ctx || !this.wheelRect) return;
+    this.ctx.clearRect(0, 0, this.wheelRect.width, this.wheelRect.height);
+  }
+
+  handleWordSubmission(word) {
+    const res = this.engine.submitWord(word);
+    const previewEl = this.container.querySelector('#wowWordPreview');
+    const textEl = this.container.querySelector('#wowWordText');
+
+    if (res.status === 'board_word') {
+      sound.playFoundationClear();
+      if (previewEl) previewEl.className = 'wow-word-preview is-success';
+      if (textEl) textEl.textContent = `${res.word} (+${res.coinsAwarded})`;
+
+      res.allWordCells.forEach(({ r, c }, idx) => {
+        setTimeout(() => {
+          this.revealSingleCellDOM(r, c, this.engine.grid[r][c].char, true);
+        }, idx * 75);
+      });
+
+      if (res.caughtButterfly) {
+        showToast('Butterfly caught! +25 Bonus Coins!', 'success', 2200);
+      }
+
+      this.updateHUDStats();
+
+      if (res.isLevelComplete) {
+        setTimeout(() => this.showVictoryModal(), res.allWordCells.length * 80 + 500);
+      }
+    } else if (res.status === 'bonus_word') {
+      sound.playCardSnap();
+      if (previewEl) previewEl.className = 'wow-word-preview is-bonus';
+      if (textEl) textEl.textContent = `BONUS! +${res.coinsAwarded}`;
+
+      const jarBtn = this.container.querySelector('#wowBonusJarBtn');
+      jarBtn?.classList.add('jar-pulse');
+      this.updateHUDStats();
+    } else if (res.status === 'already_found' || res.status === 'bonus_already') {
+      sound.vibrate([20, 40]);
+      if (previewEl) previewEl.className = 'wow-word-preview is-already-found';
+      if (textEl) textEl.textContent = `${res.word} (FOUND)`;
+
+      if (res.cells) {
+        res.cells.forEach(({ r, c }) => {
+          const cellEl = this.container.querySelector(`#wow_cell_${r}_${c}`);
+          cellEl?.classList.add('anim-celebrate');
+          setTimeout(() => cellEl?.classList.remove('anim-celebrate'), 750);
+        });
+      }
+    } else {
+      sound.vibrate(25);
+      if (previewEl) previewEl.className = 'wow-word-preview is-invalid';
+      if (textEl) textEl.textContent = word;
+    }
+
+    if (this.previewResetTimer) clearTimeout(this.previewResetTimer);
+    this.previewResetTimer = setTimeout(() => {
+      if (!this.isDragging && !this.hammerMode) {
+        this.resetWordPreview();
+      }
+    }, 850);
   }
 
   resetWordPreview() {
-    if (!this.previewPillEl || !this.previewTextEl) return;
-    this.previewPillEl.className = 'wow-word-preview';
-    this.previewTextEl.textContent = 'CONNECT LETTERS';
+    const previewEl = this.container.querySelector('#wowWordPreview');
+    const textEl = this.container.querySelector('#wowWordText');
+    if (previewEl) previewEl.className = 'wow-word-preview';
+    if (textEl) textEl.textContent = '';
   }
 
-  // ========================================================
-  // WORD SUBMISSION & VALIDATION
-  // ========================================================
-  handleWordSubmit(word) {
-    if (!word || word.length < 2) {
-      this.resetWordPreview();
+  revealSingleCellDOM(r, c, char, celebrate = false) {
+    const cellEl = this.container.querySelector(`#wow_cell_${r}_${c}`);
+    if (!cellEl) return;
+
+    cellEl.textContent = char;
+    cellEl.classList.remove('is-slot', 'target-selectable', 'anim-flip', 'anim-celebrate');
+    cellEl.classList.add('is-revealed', 'anim-flip');
+
+    if (celebrate) {
+      cellEl.classList.add('anim-celebrate');
+    }
+  }
+
+  updateHUDStats() {
+    const coinsEl = this.container.querySelector('#wowCoinsVal');
+    const starsEl = this.container.querySelector('#wowStarsVal');
+    const bonusEl = this.container.querySelector('#wowBonusCount');
+
+    if (coinsEl) coinsEl.textContent = this.engine.coins;
+    if (starsEl) starsEl.textContent = this.engine.stars;
+    if (bonusEl) bonusEl.textContent = this.engine.bonusWords.size;
+  }
+
+  shakeCoinsPill() {
+    sound.vibrate([30, 50, 30]);
+    const coinsPill = this.container.querySelector('.wow-stat-pill.coins');
+    coinsPill?.classList.add('anim-shake');
+    setTimeout(() => coinsPill?.classList.remove('anim-shake'), 500);
+  }
+
+  renderBonusWordsList() {
+    const listEl = this.container.querySelector('#wowBonusWordsList');
+    if (!listEl) return;
+
+    const words = Array.from(this.engine.bonusWords);
+    if (words.length === 0) {
+      listEl.innerHTML = `<span style="color: #94a3b8; font-size: 0.85rem; margin: auto;">Swipe extra valid 3+ letter words to fill your Bonus Amphora!</span>`;
       return;
     }
 
-    const res = this.engine.submitWord(word);
-
-    if (res.status === 'success') {
-      // 1. Success on crossword board
-      this.triggerHaptic('celebrate');
-      this.previewPillEl.className = 'wow-word-preview is-success';
-      this.previewTextEl.innerHTML = `${Icons.check('pill-check-svg', 16)} ${res.word}`;
-
-      // Reveal matching cells
-      res.newlyRevealed.forEach(({ row, col, letter }) => {
-        const cellEl = this.boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-        if (cellEl) {
-          cellEl.textContent = letter;
-          cellEl.classList.remove('is-slot');
-          cellEl.classList.add('is-revealed', 'anim-flip');
-          setTimeout(() => cellEl.classList.remove('anim-flip'), 600);
-        }
-      });
-
-      this.updateHUD();
-
-      if (res.isLevelComplete) {
-        setTimeout(() => this.triggerVictoryCelebration(), 500);
-      }
-    } else if (res.status === 'bonus') {
-      // 2. Bonus Word added to Jar
-      this.triggerHaptic('medium');
-      this.previewPillEl.className = 'wow-word-preview is-bonus';
-      this.previewTextEl.innerHTML = `${Icons.jar('pill-jar-svg', 16)} +5 Coins: ${res.word}!`;
-
-      const jarBtn = this.container.querySelector('#bonusJarBtn');
-      jarBtn?.classList.add('jar-pulse');
-      setTimeout(() => jarBtn?.classList.remove('jar-pulse'), 1000);
-
-      this.updateHUD();
-
-      if (res.jarFilled) {
-        sound.playStepGoalMet();
-        alert(`Bonus Jar Full! Earned +1 Star & +25 Coins!`);
-      }
-    } else if (res.status === 'already_found' || res.status === 'already_found_bonus') {
-      // 3. Already found word
-      this.triggerHaptic('light');
-      this.previewPillEl.className = 'wow-word-preview is-already';
-      this.previewTextEl.textContent = `${res.word} ALREADY FOUND`;
-    } else {
-      // 4. Invalid word (rejected!)
-      this.triggerHaptic('light');
-      this.previewPillEl.className = 'wow-word-preview is-error';
-      this.previewTextEl.textContent = `${word} NOT IN PUZZLE`;
-
-      // Shake crossword board
-      this.boardEl.classList.add('anim-shake');
-      setTimeout(() => this.boardEl.classList.remove('anim-shake'), 400);
-    }
-
-    setTimeout(() => this.resetWordPreview(), 800);
+    listEl.innerHTML = words
+      .map(w => `<span class="wow-bonus-tag">${w}</span>`)
+      .join('');
   }
 
-  // ========================================================
-  // HINTS LOGIC
-  // ========================================================
-  handleLightbulbHint() {
-    const res = this.engine.useLightbulb();
-    if (!res.success) {
-      alert(res.reason);
-      return;
-    }
-
-    this.triggerHaptic('medium');
-    const { row, col, letter } = res.cell;
-    const cellEl = this.boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    if (cellEl) {
-      cellEl.textContent = letter;
-      cellEl.classList.remove('is-slot');
-      cellEl.classList.add('is-revealed', 'anim-flip');
-      setTimeout(() => cellEl.classList.remove('anim-flip'), 600);
-    }
-    this.updateHUD();
-
-    if (res.isLevelComplete) {
-      setTimeout(() => this.triggerVictoryCelebration(), 500);
-    }
-  }
-
-  toggleHammerMode() {
-    const hammerBtn = this.container.querySelector('#hintHammerBtn');
-    this.isTargetMode = !this.isTargetMode;
-    hammerBtn?.classList.toggle('is-active-tool', this.isTargetMode);
-
-    // Toggle target styling on all unrevealed cells
-    const slots = this.boardEl.querySelectorAll('.wow-cell.is-slot');
-    slots.forEach(slot => {
-      slot.classList.toggle('target-selectable', this.isTargetMode);
-    });
-
-    if (this.isTargetMode) {
-      this.previewPillEl.className = 'wow-word-preview is-target-mode';
-      this.previewTextEl.innerHTML = `${Icons.hammer('pill-target-icon', 16)} TAP ANY UNSOLVED TILE`;
-    } else {
-      this.resetWordPreview();
-    }
-  }
-
-  handleHammerCellClick(row, col) {
-    if (!this.isTargetMode) return;
-    const res = this.engine.useHammer(row, col);
-    this.toggleHammerMode(); // Exit target mode
-
-    if (!res.success) {
-      alert(res.reason);
-      return;
-    }
-
-    this.triggerHaptic('medium');
-    const cellEl = this.boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    if (cellEl) {
-      cellEl.textContent = res.cell.letter;
-      cellEl.classList.remove('is-slot');
-      cellEl.classList.add('is-revealed', 'anim-flip');
-      setTimeout(() => cellEl.classList.remove('anim-flip'), 600);
-    }
-    this.updateHUD();
-
-    if (res.isLevelComplete) {
-      setTimeout(() => this.triggerVictoryCelebration(), 500);
-    }
-  }
-
-  // ========================================================
-  // MODALS
-  // ========================================================
-  openBonusJarModal() {
-    const listEl = this.container.querySelector('#bonusWordsList');
-    if (listEl) {
-      const words = Array.from(this.engine.bonusWordsFound);
-      if (words.length === 0) {
-        listEl.innerHTML = `<span style="color: #64748b; font-size: 0.82rem; width: 100%;">No bonus words discovered yet. Try spelling extra words!</span>`;
-      } else {
-        listEl.innerHTML = words.map(w => `<span class="wow-bonus-tag">${w}</span>`).join('');
-      }
-    }
-    this.bonusJarModalEl.classList.add('is-active');
-  }
-
-  openInfoModal() {
-    const lvl = this.engine.currentLevel;
-    const titleEl = this.container.querySelector('#infoModalWonderTitle');
-    const descEl = this.container.querySelector('#infoModalWonderDesc');
-
-    if (titleEl) {
-      titleEl.textContent = `${lvl.wonder} (${lvl.country})`;
-    }
-    if (descEl) {
-      descEl.textContent = lvl.description || 'Explore ancient architectural marvels while discovering words.';
-    }
-
-    this.infoModalEl.classList.add('is-active');
-  }
-
-  triggerVictoryCelebration() {
+  showVictoryModal() {
     sound.playStepGoalMet();
-    this.triggerHaptic('celebrate');
-
-    const vicTitle = this.container.querySelector('#vicWonderName');
-    if (vicTitle) {
-      vicTitle.textContent = this.engine.currentLevel.wonder;
-    }
-    this.victoryModalEl.classList.add('is-active');
-  }
-
-  triggerHaptic(type = 'light') {
-    if ('vibrate' in navigator) {
-      if (type === 'light') navigator.vibrate(12);
-      else if (type === 'medium') navigator.vibrate([18, 30, 18]);
-      else if (type === 'celebrate') navigator.vibrate([50, 80, 50, 80, 150]);
-    }
-  }
-
-  // ========================================================
-  // RENDER COMPLETE BOARD & HUD
-  // ========================================================
-  render() {
-    this.renderHUD();
-    this.renderCrosswordGrid();
-    this.positionLetterNodes();
-    this.resetWordPreview();
-  }
-
-  renderHUD() {
-    const lvl = this.engine.currentLevel;
-    const wonderTitle = this.container.querySelector('#wonderTitle');
-    const wonderCountry = this.container.querySelector('#wonderCountry');
-
-    if (wonderTitle) wonderTitle.textContent = `Level ${this.engine.levelIndex + 1}: ${lvl.wonder}`;
-    if (wonderCountry) wonderCountry.textContent = lvl.country.toUpperCase();
-
-    this.updateHUD();
-  }
-
-  updateHUD() {
-    const coinsEl = this.container.querySelector('#hudCoinsVal');
-    const starsEl = this.container.querySelector('#hudStarsVal');
-    const jarCountEl = this.container.querySelector('#bonusJarCount');
-
-    if (coinsEl) coinsEl.textContent = this.engine.coins.toLocaleString();
-    if (starsEl) starsEl.textContent = this.engine.stars.toLocaleString();
-    if (jarCountEl) jarCountEl.textContent = `${this.engine.bonusWordsFound.size % 5}/5`;
-  }
-
-  renderCrosswordGrid() {
-    if (!this.boardEl) return;
-    const rows = this.engine.currentLevel.gridRows;
-    const cols = this.engine.currentLevel.gridCols;
-
-    this.boardEl.style.gridTemplateRows = `repeat(${rows}, var(--cell-size))`;
-    this.boardEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
-    this.boardEl.innerHTML = '';
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cellData = this.engine.grid[r][c];
-        const cell = document.createElement('div');
-        cell.className = 'wow-cell';
-        cell.dataset.row = r.toString();
-        cell.dataset.col = c.toString();
-
-        if (!cellData) {
-          cell.classList.add('is-empty');
-        } else {
-          if (cellData.isRevealed) {
-            cell.classList.add('is-revealed');
-            cell.textContent = cellData.letter;
-          } else {
-            cell.classList.add('is-slot');
-            cell.textContent = '';
-          }
-
-          cell.addEventListener('click', () => {
-            this.handleHammerCellClick(r, c);
-          });
-        }
-
-        this.boardEl.appendChild(cell);
-      }
-    }
+    const modal = this.container.querySelector('#wowVictoryModal');
+    modal?.classList.add('is-active');
   }
 }

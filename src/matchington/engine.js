@@ -1,11 +1,11 @@
 /**
  * Matchington Mansion Game Engine
- * Implements Match-3 tile swapping, cascades, booster combos (Planes, Rockets, Bombs, Rainbow Balls),
+ * Implements Match-3 tile swapping, cascades, recursive booster chain reactions,
+ * full booster combos (Planes, Rockets, Bombs, Rainbow Balls), deadlock auto-shuffle,
  * obstacles (Ice floor tiles, Parquet wood boards), and room renovation meta-progression.
  */
 
 import { MATCHINGTON_LEVELS } from './levels.js';
-import { MANSION_ROOMS } from './mansion.js';
 
 export const TILE_TYPES = {
   EMPTY: 'empty',
@@ -15,7 +15,7 @@ export const TILE_TYPES = {
   PAPER_PLANE: 'paper_plane',
   BOMB: 'bomb',
   RAINBOW: 'rainbow',
-  WOOD: 'wood' // blocking obstacle
+  WOOD: 'wood'
 };
 
 export class MatchingtonEngine {
@@ -24,11 +24,12 @@ export class MatchingtonEngine {
     this.levelIndex = 0;
     this.score = 0;
     this.movesLeft = 0;
-    this.grid = []; // 2D array of items/boosters
-    this.floorGrid = []; // 2D array for 'ice' or null
+    this.grid = [];
+    this.floorGrid = [];
     this.goals = {};
     this.isWon = false;
     this.isLost = false;
+    this.stars = 0;
     this.comboCount = 0;
 
     this.loadPlayerData();
@@ -41,14 +42,14 @@ export class MatchingtonEngine {
       if (data) {
         const parsed = JSON.parse(data);
         this.highestLevelUnlocked = parsed.highestLevel || 0;
-        this.starsAvailable = parsed.starsAvailable !== undefined ? parsed.starsAvailable : 2; // give starter stars
+        this.starsAvailable = parsed.starsAvailable !== undefined ? parsed.starsAvailable : 2;
         this.totalCoins = parsed.totalCoins !== undefined ? parsed.totalCoins : 100;
         this.renovations = parsed.renovations || {};
         this.levelStars = parsed.stars || {};
         this.levelScores = parsed.scores || {};
       } else {
         this.highestLevelUnlocked = 0;
-        this.starsAvailable = 2; // 2 complimentary renovation stars
+        this.starsAvailable = 2;
         this.totalCoins = 100;
         this.renovations = {};
         this.levelStars = {};
@@ -90,36 +91,25 @@ export class MatchingtonEngine {
     this.movesLeft = lvl.moves;
     this.isWon = false;
     this.isLost = false;
+    this.stars = 0;
     this.comboCount = 0;
 
-    // Clone goals
     this.goals = {
       items: lvl.goals.items ? { ...lvl.goals.items } : {},
       ice: lvl.goals.ice || 0,
       wood: lvl.goals.wood || 0
     };
 
-    // Initialize Floor Grid (Ice)
     this.floorGrid = [];
     for (let r = 0; r < lvl.rows; r++) {
-      const row = [];
-      for (let c = 0; c < lvl.cols; c++) {
-        row.push(null);
-      }
-      this.floorGrid.push(row);
+      this.floorGrid.push(Array(lvl.cols).fill(null));
     }
 
-    // Initialize Main Grid
     this.grid = [];
     for (let r = 0; r < lvl.rows; r++) {
-      const row = [];
-      for (let c = 0; c < lvl.cols; c++) {
-        row.push(null);
-      }
-      this.grid.push(row);
+      this.grid.push(Array(lvl.cols).fill(null));
     }
 
-    // Place predefined obstacles
     for (const t of lvl.tiles) {
       if (t.r < lvl.rows && t.c < lvl.cols) {
         if (t.type === 'ice') {
@@ -134,7 +124,6 @@ export class MatchingtonEngine {
       }
     }
 
-    // Fill remaining cells with random items without pre-existing 3-matches
     for (let r = 0; r < lvl.rows; r++) {
       for (let c = 0; c < lvl.cols; c++) {
         if (!this.grid[r][c]) {
@@ -142,12 +131,13 @@ export class MatchingtonEngine {
         }
       }
     }
+
+    this.ensurePlayableBoard();
   }
 
   createRandomItemWithoutMatch(r, c, items) {
     const forbidden = new Set();
 
-    // Check horizontal
     if (c >= 2) {
       const left1 = this.grid[r][c - 1];
       const left2 = this.grid[r][c - 2];
@@ -156,12 +146,26 @@ export class MatchingtonEngine {
       }
     }
 
-    // Check vertical
     if (r >= 2) {
       const up1 = this.grid[r - 1][c];
       const up2 = this.grid[r - 2][c];
       if (up1?.type === TILE_TYPES.ITEM && up2?.type === TILE_TYPES.ITEM && up1.color === up2.color) {
         forbidden.add(up1.color);
+      }
+    }
+
+    if (r >= 1 && c >= 1) {
+      const up = this.grid[r - 1][c];
+      const left = this.grid[r][c - 1];
+      const diag = this.grid[r - 1][c - 1];
+      if (
+        up?.type === TILE_TYPES.ITEM &&
+        left?.type === TILE_TYPES.ITEM &&
+        diag?.type === TILE_TYPES.ITEM &&
+        up.color === left.color &&
+        up.color === diag.color
+      ) {
+        forbidden.add(up.color);
       }
     }
 
@@ -188,37 +192,91 @@ export class MatchingtonEngine {
   }
 
   /**
-   * Primary Action: Swap adjacent tiles at (r1, c1) and (r2, c2)
+   * Checks if at least one legal move exists on the board
    */
+  hasValidMove() {
+    const rows = this.currentLevel.rows;
+    const cols = this.currentLevel.cols;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const t = this.grid[r][c];
+        if (!t || t.type === TILE_TYPES.WOOD || t.type === TILE_TYPES.EMPTY) continue;
+        if (this.isBooster(t)) return true;
+
+        // Try swapping right and down
+        const dirs = [{ dr: 0, dc: 1 }, { dr: 1, dc: 0 }];
+        for (const { dr, dc } of dirs) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr < rows && nc < cols) {
+            const t2 = this.grid[nr][nc];
+            if (!t2 || t2.type === TILE_TYPES.WOOD || t2.type === TILE_TYPES.EMPTY) continue;
+            if (this.isBooster(t2)) return true;
+
+            this.grid[r][c] = t2;
+            this.grid[nr][nc] = t;
+            const hasM = this.findMatches().length > 0;
+            this.grid[r][c] = t;
+            this.grid[nr][nc] = t2;
+            if (hasM) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  ensurePlayableBoard() {
+    if (this.hasValidMove()) return false;
+
+    const rows = this.currentLevel.rows;
+    const cols = this.currentLevel.cols;
+    const items = this.currentLevel.items;
+
+    for (let attempt = 0; attempt < 15; attempt++) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (this.grid[r][c]?.type === TILE_TYPES.ITEM) {
+            this.grid[r][c] = this.createRandomItemWithoutMatch(r, c, items);
+          }
+        }
+      }
+      if (this.hasValidMove()) return true;
+    }
+    return true;
+  }
+
   swapTiles(r1, c1, r2, c2) {
     if (this.isWon || this.isLost || this.movesLeft <= 0) {
       return { status: 'game_over' };
     }
 
-    // Must be orthogonally adjacent
     const dist = Math.abs(r1 - r2) + Math.abs(c1 - c2);
     if (dist !== 1) {
       return { status: 'not_adjacent' };
     }
 
-    const t1 = this.grid[r1][c1];
-    const t2 = this.grid[r2][c2];
+    const t1 = this.grid[r1]?.[c1];
+    const t2 = this.grid[r2]?.[c2];
 
     if (!t1 || !t2 || t1.type === TILE_TYPES.WOOD || t2.type === TILE_TYPES.WOOD) {
       return { status: 'cannot_swap_wood' };
     }
 
-    // Case 1: Swapping two boosters together -> COMBO!
+    // Case 1: Swapping two boosters together
     if (this.isBooster(t1) && this.isBooster(t2)) {
       this.movesLeft--;
       const comboRes = this.triggerBoosterCombo(r1, c1, r2, c2);
       this.applyGravityAndRefill();
       this.processCascades();
+      const autoShuffled = this.ensurePlayableBoard();
       this.checkLevelOutcome();
 
       return {
         status: 'combo_activated',
         ...comboRes,
+        autoShuffled,
         movesLeft: this.movesLeft,
         score: this.score,
         goals: this.goals,
@@ -227,16 +285,18 @@ export class MatchingtonEngine {
       };
     }
 
-    // Case 2: Rainbow Ball swapped with a regular item
+    // Case 2: Rainbow Ball swapped with a regular item (Fixed object coordinate signature!)
     if (t1.type === TILE_TYPES.RAINBOW && t2.type === TILE_TYPES.ITEM) {
       this.movesLeft--;
-      const res = this.triggerRainbowItem(r1, c1, t2.color);
+      const res = this.triggerRainbowItem({ r: r1, c: c1 }, t2.color);
       this.applyGravityAndRefill();
       this.processCascades();
+      const autoShuffled = this.ensurePlayableBoard();
       this.checkLevelOutcome();
       return {
         status: 'rainbow_activated',
         ...res,
+        autoShuffled,
         movesLeft: this.movesLeft,
         score: this.score,
         goals: this.goals,
@@ -246,13 +306,15 @@ export class MatchingtonEngine {
     }
     if (t2.type === TILE_TYPES.RAINBOW && t1.type === TILE_TYPES.ITEM) {
       this.movesLeft--;
-      const res = this.triggerRainbowItem(r2, c2, t1.color);
+      const res = this.triggerRainbowItem({ r: r2, c: c2 }, t1.color);
       this.applyGravityAndRefill();
       this.processCascades();
+      const autoShuffled = this.ensurePlayableBoard();
       this.checkLevelOutcome();
       return {
         status: 'rainbow_activated',
         ...res,
+        autoShuffled,
         movesLeft: this.movesLeft,
         score: this.score,
         goals: this.goals,
@@ -262,32 +324,30 @@ export class MatchingtonEngine {
     }
 
     // Case 3: Regular Swap
-    // Perform temporary swap
     this.grid[r1][c1] = t2;
     this.grid[r2][c2] = t1;
 
     const matches = this.findMatches();
 
     if (matches.length === 0) {
-      // Revert swap
       this.grid[r1][c1] = t1;
       this.grid[r2][c2] = t2;
       return { status: 'invalid_swap' };
     }
 
-    // Valid match swap!
     this.movesLeft--;
     this.comboCount = 1;
 
-    // Process matches
     const blastRes = this.resolveMatches(matches, { r: r2, c: c2 });
     this.applyGravityAndRefill();
     this.processCascades();
+    const autoShuffled = this.ensurePlayableBoard();
     this.checkLevelOutcome();
 
     return {
       status: 'swap_success',
       ...blastRes,
+      autoShuffled,
       movesLeft: this.movesLeft,
       score: this.score,
       goals: this.goals,
@@ -296,23 +356,22 @@ export class MatchingtonEngine {
     };
   }
 
-  /**
-   * Tap a single booster to activate it directly
-   */
   activateBooster(r, c) {
     if (this.isWon || this.isLost || this.movesLeft <= 0) return { status: 'game_over' };
-    const tile = this.grid[r][c];
+    const tile = this.grid[r]?.[c];
     if (!this.isBooster(tile)) return { status: 'not_booster' };
 
     this.movesLeft--;
     const res = this.detonateSingleBooster(r, c);
     this.applyGravityAndRefill();
     this.processCascades();
+    const autoShuffled = this.ensurePlayableBoard();
     this.checkLevelOutcome();
 
     return {
       status: 'booster_detonated',
       ...res,
+      autoShuffled,
       movesLeft: this.movesLeft,
       score: this.score,
       goals: this.goals,
@@ -324,7 +383,7 @@ export class MatchingtonEngine {
   findMatches() {
     const rows = this.currentLevel.rows;
     const cols = this.currentLevel.cols;
-    const matchedCoords = new Map(); // key -> { r, c, color, shape }
+    const matchedCoords = new Map();
 
     // 1. Horizontal Matches
     for (let r = 0; r < rows; r++) {
@@ -342,7 +401,8 @@ export class MatchingtonEngine {
               matchedCoords.set(`${r},${colIdx}`, {
                 r, c: colIdx,
                 color: this.grid[r][colIdx].color,
-                matchLen,
+                hLen: matchLen,
+                vLen: 0,
                 dir: 'h'
               });
             }
@@ -370,7 +430,8 @@ export class MatchingtonEngine {
               matchedCoords.set(key, {
                 r: rowIdx, c,
                 color: this.grid[rowIdx][c].color,
-                matchLen: prev ? Math.max(prev.matchLen, matchLen) : matchLen,
+                hLen: prev ? prev.hLen : 0,
+                vLen: matchLen,
                 dir: prev ? 'cross' : 'v'
               });
             }
@@ -399,9 +460,10 @@ export class MatchingtonEngine {
         ) {
           const cells = [{ r, c }, { r, c: c + 1 }, { r: r + 1, c }, { r: r + 1, c: c + 1 }];
           for (const cell of cells) {
-            matchedCoords.set(`${cell.r},${cell.c}`, {
-              ...cell,
-              color: t1.color,
+            const key = `${cell.r},${cell.c}`;
+            const prev = matchedCoords.get(key) || { r: cell.r, c: cell.c, color: t1.color, hLen: 0, vLen: 0 };
+            matchedCoords.set(key, {
+              ...prev,
               isSquare: true
             });
           }
@@ -416,53 +478,53 @@ export class MatchingtonEngine {
     if (matchList.length === 0) return { clearedCount: 0 };
 
     let createdBooster = null;
-    const maxLen = Math.max(...matchList.map(m => m.matchLen || 0));
+    const maxStraight = Math.max(...matchList.map(m => Math.max(m.hLen || 0, m.vLen || 0)));
     const hasSquare = matchList.some(m => m.isSquare);
     const hasCross = matchList.some(m => m.dir === 'cross');
 
-    // Booster creation decision:
-    if (maxLen >= 5) {
+    // Authentic Matchington Booster Priority:
+    // 1. Straight 5+ -> Rainbow Ball
+    // 2. T or L shape (3x3 intersection) -> Bomb
+    // 3. 2x2 Square -> Paper Plane
+    // 4. Straight 4 -> Rocket (H or V)
+    if (maxStraight >= 5) {
       createdBooster = TILE_TYPES.RAINBOW;
-    } else if (hasCross || maxLen >= 5) {
+    } else if (hasCross) {
       createdBooster = TILE_TYPES.BOMB;
     } else if (hasSquare) {
       createdBooster = TILE_TYPES.PAPER_PLANE;
-    } else if (maxLen === 4) {
-      const hMatch = matchList.find(m => m.matchLen === 4 && m.dir === 'h');
+    } else if (maxStraight === 4) {
+      const hMatch = matchList.find(m => m.hLen === 4);
       createdBooster = hMatch ? TILE_TYPES.ROCKET_H : TILE_TYPES.ROCKET_V;
     }
 
     const clearedPositions = [];
 
-    // Clear matched tiles and damage floor/wood
     for (const m of matchList) {
       const { r, c } = m;
       const tile = this.grid[r][c];
       if (!tile || tile.type === TILE_TYPES.EMPTY) continue;
 
-      // Collect item goal
       if (tile.color && this.goals.items && this.goals.items[tile.color] > 0) {
         this.goals.items[tile.color]--;
       }
 
-      // Damage ice on floor
       if (this.floorGrid[r][c] === 'ice') {
         this.floorGrid[r][c] = null;
         if (this.goals.ice > 0) this.goals.ice--;
       }
 
-      // Damage adjacent wood
       this.damageAdjacentWood(r, c);
 
       this.grid[r][c] = { type: TILE_TYPES.EMPTY };
       clearedPositions.push({ r, c });
     }
 
-    // Spawn booster at spawn point or center of match
     if (createdBooster) {
-      const target = spawnPoint && matchList.some(m => m.r === spawnPoint.r && m.c === spawnPoint.c)
+      const crossCenter = matchList.find(m => m.dir === 'cross');
+      const target = (spawnPoint && matchList.some(m => m.r === spawnPoint.r && m.c === spawnPoint.c))
         ? spawnPoint
-        : { r: matchList[0].r, c: matchList[0].c };
+        : (crossCenter || { r: matchList[0].r, c: matchList[0].c });
 
       this.grid[target.r][target.c] = {
         type: createdBooster,
@@ -470,7 +532,6 @@ export class MatchingtonEngine {
       };
     }
 
-    // Points calculation
     const basePts = clearedPositions.length * 20;
     const comboBonus = this.comboCount * 50;
     this.score += basePts + comboBonus;
@@ -503,6 +564,32 @@ export class MatchingtonEngine {
     }
   }
 
+  getMostProminentItemColor() {
+    const counts = {};
+    for (let r = 0; r < this.currentLevel.rows; r++) {
+      for (let c = 0; c < this.currentLevel.cols; c++) {
+        const t = this.grid[r][c];
+        if (t && t.type === TILE_TYPES.ITEM && t.color) {
+          counts[t.color] = (counts[t.color] || 0) + 1;
+        }
+      }
+    }
+    if (this.goals.items) {
+      for (const [itemCol, rem] of Object.entries(this.goals.items)) {
+        if (rem > 0 && counts[itemCol] > 0) return itemCol;
+      }
+    }
+    let best = this.currentLevel.items[0];
+    let max = -1;
+    for (const [col, count] of Object.entries(counts)) {
+      if (count > max) {
+        max = count;
+        best = col;
+      }
+    }
+    return best;
+  }
+
   triggerRainbowItem(rainbowPos, targetColor) {
     this.grid[rainbowPos.r][rainbowPos.c] = { type: TILE_TYPES.EMPTY };
     const rows = this.currentLevel.rows;
@@ -513,74 +600,126 @@ export class MatchingtonEngine {
       for (let c = 0; c < cols; c++) {
         const tile = this.grid[r][c];
         if (tile && tile.type === TILE_TYPES.ITEM && tile.color === targetColor) {
-          if (this.goals.items && this.goals.items[targetColor] > 0) {
-            this.goals.items[targetColor]--;
-          }
-          if (this.floorGrid[r][c] === 'ice') {
-            this.floorGrid[r][c] = null;
-            if (this.goals.ice > 0) this.goals.ice--;
-          }
-          this.damageAdjacentWood(r, c);
-          this.grid[r][c] = { type: TILE_TYPES.EMPTY };
           cleared.push({ r, c });
         }
       }
     }
 
-    this.score += cleared.length * 30 + 300;
-    return { clearedPositions: cleared };
+    const processed = this.processClearedTiles(cleared);
+    this.score += processed.length * 30 + 300;
+    return { clearedPositions: processed };
+  }
+
+  getPositionsForBoosterEffect(type, r, c, excludeTargets = new Set()) {
+    const cleared = [];
+    const rows = this.currentLevel.rows;
+    const cols = this.currentLevel.cols;
+
+    if (type === TILE_TYPES.ROCKET_H) {
+      for (let col = 0; col < cols; col++) cleared.push({ r, c: col });
+    } else if (type === TILE_TYPES.ROCKET_V) {
+      for (let row = 0; row < rows; row++) cleared.push({ r: row, c });
+    } else if (type === TILE_TYPES.BOMB) {
+      for (let ro = r - 1; ro <= r + 1; ro++) {
+        for (let co = c - 1; co <= c + 1; co++) {
+          if (ro >= 0 && ro < rows && co >= 0 && co < cols) {
+            cleared.push({ r: ro, c: co });
+          }
+        }
+      }
+    } else if (type === TILE_TYPES.PAPER_PLANE) {
+      // Takeoff 4-petal cross + homing strike on priority objective!
+      const petals = [
+        { r, c },
+        { r: r - 1, c },
+        { r: r + 1, c },
+        { r, c: c - 1 },
+        { r, c: c + 1 }
+      ];
+      for (const p of petals) {
+        if (p.r >= 0 && p.r < rows && p.c >= 0 && p.c < cols) {
+          cleared.push(p);
+          excludeTargets.add(`${p.r},${p.c}`);
+        }
+      }
+      const target = this.findPlaneTarget(excludeTargets);
+      if (target) {
+        cleared.push(target);
+        excludeTargets.add(`${target.r},${target.c}`);
+      }
+    } else if (type === TILE_TYPES.RAINBOW) {
+      const color = this.getMostProminentItemColor();
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          if (this.grid[row][col]?.type === TILE_TYPES.ITEM && this.grid[row][col].color === color) {
+            cleared.push({ r: row, c: col });
+          }
+        }
+      }
+    }
+    return cleared;
   }
 
   detonateSingleBooster(r, c) {
     const b = this.grid[r][c];
     this.grid[r][c] = { type: TILE_TYPES.EMPTY };
-    const cleared = [];
 
-    if (b.type === TILE_TYPES.ROCKET_H) {
-      for (let col = 0; col < this.currentLevel.cols; col++) cleared.push({ r, c: col });
-    } else if (b.type === TILE_TYPES.ROCKET_V) {
-      for (let row = 0; row < this.currentLevel.rows; row++) cleared.push({ r: row, c });
-    } else if (b.type === TILE_TYPES.BOMB) {
-      for (let ro = r - 1; ro <= r + 1; ro++) {
-        for (let co = c - 1; co <= c + 1; co++) {
-          if (ro >= 0 && ro < this.currentLevel.rows && co >= 0 && co < this.currentLevel.cols) {
-            cleared.push({ r: ro, c: co });
-          }
-        }
-      }
-    } else if (b.type === TILE_TYPES.PAPER_PLANE) {
-      // Clears self + flies to seek an objective (ice, wood, or random item)
-      cleared.push({ r, c });
-      const target = this.findPlaneTarget();
-      if (target) cleared.push(target);
-    } else if (b.type === TILE_TYPES.RAINBOW) {
-      // Clears all of random color
-      const color = this.currentLevel.items[0];
-      return this.triggerRainbowItem({ r, c }, color);
+    if (b.type === TILE_TYPES.RAINBOW) {
+      return this.triggerRainbowItem({ r, c }, this.getMostProminentItemColor());
     }
 
-    this.processClearedTiles(cleared);
-    this.score += cleared.length * 25 + 100;
-    return { clearedPositions: cleared };
+    const excludeSet = new Set([`${r},${c}`]);
+    const initial = this.getPositionsForBoosterEffect(b.type, r, c, excludeSet);
+    const planeTarget = b.type === TILE_TYPES.PAPER_PLANE ? initial[initial.length - 1] : null;
+    const processed = this.processClearedTiles(initial, excludeSet);
+    this.score += processed.length * 25 + 100;
+    return {
+      boosterType: b.type,
+      planeOrigin: { r, c },
+      planeTarget,
+      clearedPositions: processed
+    };
   }
 
-  findPlaneTarget() {
+  findPlaneTarget(excludeSet = new Set()) {
     const rows = this.currentLevel.rows;
     const cols = this.currentLevel.cols;
 
-    // Prioritize Ice
+    // 1. Prioritize Ice Floor Tiles
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        if (this.floorGrid[r][c] === 'ice') return { r, c };
+        const key = `${r},${c}`;
+        if (!excludeSet.has(key) && this.floorGrid[r][c] === 'ice') return { r, c };
       }
     }
-    // Prioritize Wood
+    // 2. Prioritize Wood Obstacles
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        if (this.grid[r][c]?.type === TILE_TYPES.WOOD) return { r, c };
+        const key = `${r},${c}`;
+        if (!excludeSet.has(key) && this.grid[r][c]?.type === TILE_TYPES.WOOD) return { r, c };
       }
     }
-    // Random non-empty cell
+    // 3. Prioritize Goal Items
+    if (this.goals.items) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const key = `${r},${c}`;
+          const t = this.grid[r][c];
+          if (!excludeSet.has(key) && t?.type === TILE_TYPES.ITEM && this.goals.items[t.color] > 0) {
+            return { r, c };
+          }
+        }
+      }
+    }
+    // 4. Fallback to any non-empty cell
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${r},${c}`;
+        if (!excludeSet.has(key) && this.grid[r][c]?.type !== TILE_TYPES.EMPTY) {
+          return { r, c };
+        }
+      }
+    }
     return { r: Math.floor(Math.random() * rows), c: Math.floor(Math.random() * cols) };
   }
 
@@ -594,24 +733,43 @@ export class MatchingtonEngine {
     const types = [b1.type, b2.type].sort();
     const comboKey = types.join('+');
     const cleared = [];
+    const excludeSet = new Set([`${r1},${c1}`, `${r2},${c2}`]);
 
     if (b1.type === TILE_TYPES.RAINBOW && b2.type === TILE_TYPES.RAINBOW) {
-      // Rainbow + Rainbow: Complete board wipe!
       for (let r = 0; r < this.currentLevel.rows; r++) {
         for (let c = 0; c < this.currentLevel.cols; c++) {
           cleared.push({ r, c });
         }
       }
       this.score += 2500;
-    } else if (types.includes(TILE_TYPES.PAPER_PLANE) && types.includes(TILE_TYPES.PAPER_PLANE)) {
-      // Plane + Plane: 3 Paper planes launch!
-      for (let i = 0; i < 3; i++) {
-        const t = this.findPlaneTarget();
-        if (t) cleared.push(t);
+    } else if (types.includes(TILE_TYPES.RAINBOW)) {
+      // Rainbow + Rocket/Bomb/Plane: transforms all of the dominant color into that booster and fires them!
+      const otherType = b1.type === TILE_TYPES.RAINBOW ? b2.type : b1.type;
+      const targetColor = this.getMostProminentItemColor();
+      for (let r = 0; r < this.currentLevel.rows; r++) {
+        for (let c = 0; c < this.currentLevel.cols; c++) {
+          const t = this.grid[r][c];
+          if (t && t.type === TILE_TYPES.ITEM && t.color === targetColor) {
+            cleared.push({ r, c });
+            const subType = (otherType === TILE_TYPES.ROCKET_H || otherType === TILE_TYPES.ROCKET_V)
+              ? ((r + c) % 2 === 0 ? TILE_TYPES.ROCKET_H : TILE_TYPES.ROCKET_V)
+              : otherType;
+            cleared.push(...this.getPositionsForBoosterEffect(subType, r, c, excludeSet));
+          }
+        }
       }
-      this.score += 800;
-    } else if (types.includes(TILE_TYPES.BOMB) && types.includes(TILE_TYPES.BOMB)) {
-      // 5x5 Bomb explosion
+      this.score += 1600;
+    } else if (b1.type === TILE_TYPES.PAPER_PLANE && b2.type === TILE_TYPES.PAPER_PLANE) {
+      // Plane + Plane: 3 distinct homing Paper Planes launch!
+      for (let i = 0; i < 3; i++) {
+        const t = this.findPlaneTarget(excludeSet);
+        if (t) {
+          excludeSet.add(`${t.r},${t.c}`);
+          cleared.push(t);
+        }
+      }
+      this.score += 900;
+    } else if (b1.type === TILE_TYPES.BOMB && b2.type === TILE_TYPES.BOMB) {
       for (let ro = r1 - 2; ro <= r1 + 2; ro++) {
         for (let co = c1 - 2; co <= c1 + 2; co++) {
           if (ro >= 0 && ro < this.currentLevel.rows && co >= 0 && co < this.currentLevel.cols) {
@@ -620,70 +778,113 @@ export class MatchingtonEngine {
         }
       }
       this.score += 1200;
+    } else if (types.includes(TILE_TYPES.BOMB) && (types.includes(TILE_TYPES.ROCKET_H) || types.includes(TILE_TYPES.ROCKET_V))) {
+      // Rocket + Bomb: 3 full rows and 3 full columns Mega Cross!
+      for (let ro = r1 - 1; ro <= r1 + 1; ro++) {
+        if (ro >= 0 && ro < this.currentLevel.rows) {
+          for (let c = 0; c < this.currentLevel.cols; c++) cleared.push({ r: ro, c });
+        }
+      }
+      for (let co = c1 - 1; co <= c1 + 1; co++) {
+        if (co >= 0 && co < this.currentLevel.cols) {
+          for (let r = 0; r < this.currentLevel.rows; r++) cleared.push({ r, c: co });
+        }
+      }
+      this.score += 1300;
     } else {
-      // Cross / Super Blast (Rocket + Rocket or Rocket + Bomb)
+      // Cross Blast (Rocket + Rocket or Plane + Rocket/Bomb)
       for (let col = 0; col < this.currentLevel.cols; col++) cleared.push({ r: r1, c: col });
       for (let row = 0; row < this.currentLevel.rows; row++) cleared.push({ r: row, c: c1 });
       this.score += 900;
     }
 
-    this.processClearedTiles(cleared);
-    return { combo: comboKey, clearedPositions: cleared };
+    const processed = this.processClearedTiles(cleared, excludeSet);
+    return { combo: comboKey, clearedPositions: processed };
   }
 
-  processClearedTiles(positions) {
-    const unique = new Set();
-    for (const p of positions) {
+  /**
+   * Processes cleared tiles with full recursive chain-detonation when a blast hits another booster!
+   */
+  processClearedTiles(positions, excludeSet = new Set()) {
+    const queue = [...positions];
+    const visited = new Set();
+    const clearedList = [];
+
+    while (queue.length > 0) {
+      const p = queue.shift();
       const key = `${p.r},${p.c}`;
-      if (!unique.has(key)) {
-        unique.add(key);
-        const cell = this.grid[p.r][p.c];
-        if (!cell) continue;
+      if (visited.has(key)) continue;
+      visited.add(key);
 
-        if (cell.color && this.goals.items && this.goals.items[cell.color] > 0) {
-          this.goals.items[cell.color]--;
-        }
+      const cell = this.grid[p.r]?.[p.c];
+      if (!cell) continue;
 
-        if (this.floorGrid[p.r][p.c] === 'ice') {
-          this.floorGrid[p.r][p.c] = null;
-          if (this.goals.ice > 0) this.goals.ice--;
-        }
-
-        this.damageAdjacentWood(p.r, p.c);
-        this.grid[p.r][p.c] = { type: TILE_TYPES.EMPTY };
+      if (this.floorGrid[p.r]?.[p.c] === 'ice') {
+        this.floorGrid[p.r][p.c] = null;
+        if (this.goals.ice > 0) this.goals.ice--;
       }
+
+      if (cell.type === TILE_TYPES.EMPTY) continue;
+
+      // Chain-detonate if this cell is another booster!
+      if (this.isBooster(cell)) {
+        const subType = cell.type;
+        this.grid[p.r][p.c] = { type: TILE_TYPES.EMPTY };
+        clearedList.push(p);
+        const chained = this.getPositionsForBoosterEffect(subType, p.r, p.c, excludeSet);
+        queue.push(...chained);
+        this.score += 120;
+        continue;
+      }
+
+      if (cell.type === TILE_TYPES.WOOD) {
+        if (this.goals.wood > 0) this.goals.wood--;
+        this.grid[p.r][p.c] = { type: TILE_TYPES.EMPTY };
+        clearedList.push(p);
+        continue;
+      }
+
+      if (cell.color && this.goals.items && this.goals.items[cell.color] > 0) {
+        this.goals.items[cell.color]--;
+      }
+
+      this.damageAdjacentWood(p.r, p.c);
+      this.grid[p.r][p.c] = { type: TILE_TYPES.EMPTY };
+      clearedList.push(p);
     }
+
+    return clearedList;
   }
 
+  /**
+   * Gravity & Refill: Movable items slip past fixed WOOD obstacles so no dead empty holes ever remain below wood!
+   */
   applyGravityAndRefill() {
     const rows = this.currentLevel.rows;
     const cols = this.currentLevel.cols;
 
     for (let c = 0; c < cols; c++) {
-      let writeRow = rows - 1;
+      // Collect all movable non-wood items in this column from bottom to top
+      const movable = [];
       for (let r = rows - 1; r >= 0; r--) {
         const item = this.grid[r][c];
-        if (item && item.type !== TILE_TYPES.EMPTY) {
-          if (item.type === TILE_TYPES.WOOD) {
-            writeRow = r - 1; // wood does not fall
-            continue;
-          }
-          if (writeRow !== r) {
-            this.grid[writeRow][c] = item;
-            this.grid[r][c] = { type: TILE_TYPES.EMPTY };
-          }
-          writeRow--;
+        if (item && item.type !== TILE_TYPES.EMPTY && item.type !== TILE_TYPES.WOOD) {
+          movable.push(item);
         }
       }
 
-      while (writeRow >= 0) {
-        if (this.grid[writeRow][c]?.type !== TILE_TYPES.WOOD) {
-          this.grid[writeRow][c] = {
+      // Place movable items into non-wood slots from bottom to top, then fill remaining top slots with new items
+      let mIdx = 0;
+      for (let r = rows - 1; r >= 0; r--) {
+        if (this.grid[r][c]?.type === TILE_TYPES.WOOD) continue;
+        if (mIdx < movable.length) {
+          this.grid[r][c] = movable[mIdx++];
+        } else {
+          this.grid[r][c] = {
             type: TILE_TYPES.ITEM,
             color: this.currentLevel.items[Math.floor(Math.random() * this.currentLevel.items.length)]
           };
         }
-        writeRow--;
       }
     }
   }
@@ -692,7 +893,7 @@ export class MatchingtonEngine {
     let matches = this.findMatches();
     let cascades = 0;
 
-    while (matches.length > 0 && cascades < 8) {
+    while (matches.length > 0 && cascades < 20) {
       this.comboCount++;
       this.resolveMatches(matches);
       this.applyGravityAndRefill();
@@ -716,17 +917,20 @@ export class MatchingtonEngine {
     if (this.checkGoalsSatisfied()) {
       this.isWon = true;
 
-      // Bonus for moves left
       this.score += this.movesLeft * 200;
 
-      // Star calculation
       const th = this.currentLevel.starThresholds;
       this.stars = this.score >= th[2] ? 3 : this.score >= th[1] ? 2 : 1;
 
-      // Award Renovation Star / Key!
       this.starsAvailable += 1;
       this.totalCoins += this.stars * 20;
 
+      if (!this.levelStars[this.levelIndex] || this.stars > this.levelStars[this.levelIndex]) {
+        this.levelStars[this.levelIndex] = this.stars;
+      }
+      if (!this.levelScores[this.levelIndex] || this.score > this.levelScores[this.levelIndex]) {
+        this.levelScores[this.levelIndex] = this.score;
+      }
       if (this.levelIndex >= this.highestLevelUnlocked) {
         this.highestLevelUnlocked = Math.min(this.levelIndex + 1, MATCHINGTON_LEVELS.length - 1);
       }
@@ -736,15 +940,28 @@ export class MatchingtonEngine {
     }
   }
 
+  /**
+   * First-time renovation of a furniture spot costs 1 Star; switching styles afterward is FREE!
+   */
   renovateRoomTask(taskId, choiceId) {
-    if (this.starsAvailable < 1) {
+    const alreadyRenovated = !!this.renovations[taskId];
+
+    if (!alreadyRenovated && this.starsAvailable < 1) {
       return { success: false, reason: 'not_enough_stars' };
     }
 
-    this.starsAvailable -= 1;
+    if (!alreadyRenovated) {
+      this.starsAvailable -= 1;
+    }
     this.renovations[taskId] = choiceId;
     this.savePlayerData();
-    return { success: true, taskId, choiceId, starsRemaining: this.starsAvailable };
+    return {
+      success: true,
+      taskId,
+      choiceId,
+      wasFreeRestyle: alreadyRenovated,
+      starsRemaining: this.starsAvailable
+    };
   }
 
   nextLevel() {

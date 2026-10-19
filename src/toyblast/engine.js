@@ -1,6 +1,7 @@
 /**
  * Toy Blast Game Engine
- * Handles tap-to-blast collapse mechanics, booster combos, gravity, and level objectives.
+ * Handles tap-to-blast collapse mechanics, recursive booster chain reactions,
+ * deterministic rotor orientation, deadlock auto-shuffling, gravity, and level objectives.
  */
 
 import { TOY_BLAST_LEVELS } from './levels.js';
@@ -22,7 +23,7 @@ export class ToyBlastEngine {
     this.levelIndex = 0;
     this.score = 0;
     this.movesLeft = 0;
-    this.grid = []; // 2D array of Cell objects
+    this.grid = [];
     this.goals = {};
     this.isWon = false;
     this.isLost = false;
@@ -83,7 +84,6 @@ export class ToyBlastEngine {
     this.stars = 0;
     this.comboChain = 0;
 
-    // Clone goals
     this.goals = {
       cubes: lvl.goals.cubes ? { ...lvl.goals.cubes } : {},
       crates: lvl.goals.crates || 0,
@@ -91,7 +91,6 @@ export class ToyBlastEngine {
       bubbles: lvl.goals.bubbles || 0
     };
 
-    // Initialize 2D Grid
     this.grid = [];
     for (let r = 0; r < lvl.rows; r++) {
       const row = [];
@@ -101,7 +100,6 @@ export class ToyBlastEngine {
       this.grid.push(row);
     }
 
-    // Place predefined obstacles
     for (const obs of lvl.obstacles) {
       if (obs.r < lvl.rows && obs.c < lvl.cols) {
         if (obs.type === 'crate') {
@@ -118,21 +116,20 @@ export class ToyBlastEngine {
             bubble: false
           };
         } else if (obs.type === 'bubble') {
-          // Encapsulate the cube inside a bubble
           this.grid[obs.r][obs.c].bubble = true;
         }
       }
     }
 
-    // Check if any duck starts on bottom row (unlikely, but just in case)
     this.checkDucksAtBottom();
+    this.ensurePlayableBoard();
   }
 
   createRandomCube(colors) {
     const color = colors[Math.floor(Math.random() * colors.length)];
     return {
       type: CELL_TYPES.CUBE,
-      color: color,
+      color,
       bubble: false
     };
   }
@@ -143,8 +140,75 @@ export class ToyBlastEngine {
   }
 
   /**
-   * Primary user interaction: tap a cell at row r, col c
+   * Checks whether at least one valid move exists (any booster OR any adjacent pair of same-colored cubes)
    */
+  hasValidMove() {
+    const rows = this.currentLevel.rows;
+    const cols = this.currentLevel.cols;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = this.grid[r][c];
+        if (!cell) continue;
+        if (this.isBooster(cell)) return true;
+        if (cell.type === CELL_TYPES.CUBE) {
+          if (c + 1 < cols && this.grid[r][c + 1]?.type === CELL_TYPES.CUBE && this.grid[r][c + 1].color === cell.color) {
+            return true;
+          }
+          if (r + 1 < rows && this.grid[r + 1][c]?.type === CELL_TYPES.CUBE && this.grid[r + 1][c].color === cell.color) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Automatically reshuffles cube colors on the board if no moves exist
+   */
+  ensurePlayableBoard() {
+    if (this.hasValidMove()) return false;
+
+    const rows = this.currentLevel.rows;
+    const cols = this.currentLevel.cols;
+    const cubeCoords = [];
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (this.grid[r][c]?.type === CELL_TYPES.CUBE) {
+          cubeCoords.push({ r, c });
+        }
+      }
+    }
+
+    if (cubeCoords.length < 2) return false;
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      for (const pos of cubeCoords) {
+        this.grid[pos.r][pos.c].color = this.currentLevel.colors[
+          Math.floor(Math.random() * this.currentLevel.colors.length)
+        ];
+      }
+      if (this.hasValidMove()) return true;
+    }
+
+    // Force an orthogonal pair if random shuffle didn't create one
+    for (const pos of cubeCoords) {
+      const right = { r: pos.r, c: pos.c + 1 };
+      const down = { r: pos.r + 1, c: pos.c };
+      if (right.c < cols && this.grid[right.r][right.c]?.type === CELL_TYPES.CUBE) {
+        this.grid[right.r][right.c].color = this.grid[pos.r][pos.c].color;
+        return true;
+      }
+      if (down.r < rows && this.grid[down.r][down.c]?.type === CELL_TYPES.CUBE) {
+        this.grid[down.r][down.c].color = this.grid[pos.r][pos.c].color;
+        return true;
+      }
+    }
+    return true;
+  }
+
   tapCell(r, c) {
     if (this.isWon || this.isLost || this.movesLeft <= 0) {
       return { status: 'game_over' };
@@ -173,11 +237,13 @@ export class ToyBlastEngine {
 
       this.applyGravityAndRefill();
       this.checkDucksAtBottom();
+      const autoShuffled = this.ensurePlayableBoard();
       this.checkLevelOutcome();
 
       return {
         status: 'booster_activated',
         ...blastResult,
+        autoShuffled,
         movesLeft: this.movesLeft,
         score: this.score,
         goals: this.goals,
@@ -196,17 +262,23 @@ export class ToyBlastEngine {
 
       this.movesLeft--;
 
-      // Blasting cubes
+      // Deterministic booster creation based on group size and shape
       let newBoosterType = null;
+      const tappedColor = cell.color;
       if (group.length >= 9) {
         newBoosterType = CELL_TYPES.DISCO;
       } else if (group.length >= 7) {
         newBoosterType = CELL_TYPES.BOMB;
       } else if (group.length >= 5) {
-        newBoosterType = Math.random() < 0.5 ? CELL_TYPES.ROTOR_H : CELL_TYPES.ROTOR_V;
+        const minR = Math.min(...group.map(p => p.r));
+        const maxR = Math.max(...group.map(p => p.r));
+        const minC = Math.min(...group.map(p => p.c));
+        const maxC = Math.max(...group.map(p => p.c));
+        const rowSpan = maxR - minR;
+        const colSpan = maxC - minC;
+        newBoosterType = colSpan >= rowSpan ? CELL_TYPES.ROTOR_H : CELL_TYPES.ROTOR_V;
       }
 
-      // Collect blasted cubes for objectives & score
       const blastedCubes = [];
       const poppedBubbles = [];
       const damagedCrates = [];
@@ -226,7 +298,6 @@ export class ToyBlastEngine {
         this.grid[pos.r][pos.c] = { type: CELL_TYPES.EMPTY };
       }
 
-      // Check adjacent crates & bubbles to group
       const adjPositions = this.getOrthogonalNeighborsForGroup(group);
       for (const p of adjPositions) {
         const neighbor = this.grid[p.r][p.c];
@@ -244,23 +315,21 @@ export class ToyBlastEngine {
         }
       }
 
-      // Spawn booster at tapped position if qualified
       if (newBoosterType) {
         this.grid[r][c] = {
           type: newBoosterType,
-          color: null,
+          color: newBoosterType === CELL_TYPES.DISCO ? tappedColor : null,
           bubble: false
         };
       }
 
-      // Calculate score
       const basePoints = group.length * 15;
       const bonusPoints = newBoosterType ? 250 : 0;
       this.score += basePoints + bonusPoints;
 
-      // Apply physics & cascades
       this.applyGravityAndRefill();
       this.checkDucksAtBottom();
+      const autoShuffled = this.ensurePlayableBoard();
       this.checkLevelOutcome();
 
       return {
@@ -270,6 +339,7 @@ export class ToyBlastEngine {
         blastedCubes,
         poppedBubbles,
         damagedCrates,
+        autoShuffled,
         movesLeft: this.movesLeft,
         score: this.score,
         goals: this.goals,
@@ -355,45 +425,47 @@ export class ToyBlastEngine {
     return null;
   }
 
-  triggerSingleBooster(r, c) {
-    const booster = this.grid[r][c];
-    this.grid[r][c] = { type: CELL_TYPES.EMPTY };
+  getPositionsForBoosterEffect(type, r, c, discoColor = null) {
+    const positions = [];
+    const rows = this.currentLevel.rows;
+    const cols = this.currentLevel.cols;
 
-    const clearedPositions = [];
-
-    if (booster.type === CELL_TYPES.ROTOR_H) {
-      // Clear entire row
-      for (let col = 0; col < this.currentLevel.cols; col++) {
-        clearedPositions.push({ r, c: col });
+    if (type === CELL_TYPES.ROTOR_H) {
+      for (let col = 0; col < cols; col++) {
+        positions.push({ r, c: col });
       }
-    } else if (booster.type === CELL_TYPES.ROTOR_V) {
-      // Clear entire column
-      for (let row = 0; row < this.currentLevel.rows; row++) {
-        clearedPositions.push({ r: row, c });
+    } else if (type === CELL_TYPES.ROTOR_V) {
+      for (let row = 0; row < rows; row++) {
+        positions.push({ r: row, c });
       }
-    } else if (booster.type === CELL_TYPES.BOMB) {
-      // 3x3 radius
+    } else if (type === CELL_TYPES.BOMB) {
       for (let ro = r - 1; ro <= r + 1; ro++) {
         for (let co = c - 1; co <= c + 1; co++) {
-          if (ro >= 0 && ro < this.currentLevel.rows && co >= 0 && co < this.currentLevel.cols) {
-            clearedPositions.push({ r: ro, c: co });
+          if (ro >= 0 && ro < rows && co >= 0 && co < cols) {
+            positions.push({ r: ro, c: co });
           }
         }
       }
-    } else if (booster.type === CELL_TYPES.DISCO) {
-      // Clear all of the most prominent color
-      const targetColor = this.getMostProminentColor();
-      for (let row = 0; row < this.currentLevel.rows; row++) {
-        for (let col = 0; col < this.currentLevel.cols; col++) {
+    } else if (type === CELL_TYPES.DISCO) {
+      const targetColor = discoColor || this.getMostProminentColor();
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
           const item = this.grid[row][col];
           if (item && item.type === CELL_TYPES.CUBE && item.color === targetColor) {
-            clearedPositions.push({ r: row, c: col });
+            positions.push({ r: row, c: col });
           }
         }
       }
     }
+    return positions;
+  }
 
-    this.processClearedCells(clearedPositions);
+  triggerSingleBooster(r, c) {
+    const booster = this.grid[r][c];
+    this.grid[r][c] = { type: CELL_TYPES.EMPTY };
+
+    const initialPositions = this.getPositionsForBoosterEffect(booster.type, r, c, booster.color);
+    const clearedPositions = this.processClearedCells(initialPositions);
     this.score += clearedPositions.length * 25 + 150;
 
     return {
@@ -411,47 +483,50 @@ export class ToyBlastEngine {
 
     const types = [b1.type, b2.type].sort();
     const comboKey = types.join('+');
-    const clearedPositions = [];
+    const initialPositions = [];
 
     if (b1.type === CELL_TYPES.DISCO && b2.type === CELL_TYPES.DISCO) {
-      // Super Disco Wipe: clears ALL non-duck cells!
+      // Super Disco Wipe: clears ALL non-duck cells on the board
       for (let r = 0; r < this.currentLevel.rows; r++) {
         for (let c = 0; c < this.currentLevel.cols; c++) {
-          clearedPositions.push({ r, c });
+          initialPositions.push({ r, c });
         }
       }
       this.score += 2000;
     } else if (types.includes(CELL_TYPES.DISCO)) {
-      // Disco + Bomb or Disco + Rotor
+      // Disco + Bomb or Disco + Rotor:
+      // 1. Collects all cubes of targetColor (counting goals & bubbles first!)
+      // 2. Detonates a Rotor or Bomb at EVERY one of those coordinates!
+      const discoObj = b1.type === CELL_TYPES.DISCO ? b1 : b2;
       const otherType = b1.type === CELL_TYPES.DISCO ? b2.type : b1.type;
-      const targetColor = this.getMostProminentColor();
+      const targetColor = discoObj.color || this.getMostProminentColor();
 
-      // Transform all of target color into otherType and detonate
       for (let r = 0; r < this.currentLevel.rows; r++) {
         for (let c = 0; c < this.currentLevel.cols; c++) {
           const cell = this.grid[r][c];
-          if (cell && cell.color === targetColor) {
-            this.grid[r][c] = { type: otherType, color: null, bubble: false };
-            clearedPositions.push({ r, c });
+          if (cell && cell.type === CELL_TYPES.CUBE && cell.color === targetColor) {
+            initialPositions.push({ r, c });
+            const subType = (otherType === CELL_TYPES.ROTOR_H || otherType === CELL_TYPES.ROTOR_V)
+              ? ((r + c) % 2 === 0 ? CELL_TYPES.ROTOR_H : CELL_TYPES.ROTOR_V)
+              : CELL_TYPES.BOMB;
+            initialPositions.push(...this.getPositionsForBoosterEffect(subType, r, c));
           }
         }
       }
       this.score += 1500;
     } else if (types.includes(CELL_TYPES.BOMB) && (types.includes(CELL_TYPES.ROTOR_H) || types.includes(CELL_TYPES.ROTOR_V))) {
-      // Mega Cross: 3 rows and 3 columns!
-      const centerR = r1;
-      const centerC = c1;
-      for (let ro = centerR - 1; ro <= centerR + 1; ro++) {
+      // Mega Cross: 3 full rows and 3 full columns!
+      for (let ro = r1 - 1; ro <= r1 + 1; ro++) {
         if (ro >= 0 && ro < this.currentLevel.rows) {
           for (let c = 0; c < this.currentLevel.cols; c++) {
-            clearedPositions.push({ r: ro, c });
+            initialPositions.push({ r: ro, c });
           }
         }
       }
-      for (let co = centerC - 1; co <= centerC + 1; co++) {
+      for (let co = c1 - 1; co <= c1 + 1; co++) {
         if (co >= 0 && co < this.currentLevel.cols) {
           for (let r = 0; r < this.currentLevel.rows; r++) {
-            clearedPositions.push({ r, c: co });
+            initialPositions.push({ r, c: co });
           }
         }
       }
@@ -461,7 +536,7 @@ export class ToyBlastEngine {
       for (let ro = r1 - 2; ro <= r1 + 2; ro++) {
         for (let co = c1 - 2; co <= c1 + 2; co++) {
           if (ro >= 0 && ro < this.currentLevel.rows && co >= 0 && co < this.currentLevel.cols) {
-            clearedPositions.push({ r: ro, c: co });
+            initialPositions.push({ r: ro, c: co });
           }
         }
       }
@@ -469,15 +544,15 @@ export class ToyBlastEngine {
     } else {
       // Rotor + Rotor: Cross Blast (1 row + 1 col)
       for (let col = 0; col < this.currentLevel.cols; col++) {
-        clearedPositions.push({ r: r1, c: col });
+        initialPositions.push({ r: r1, c: col });
       }
       for (let row = 0; row < this.currentLevel.rows; row++) {
-        clearedPositions.push({ r: row, c: c1 });
+        initialPositions.push({ r: row, c: c1 });
       }
       this.score += 800;
     }
 
-    this.processClearedCells(clearedPositions);
+    const clearedPositions = this.processClearedCells(initialPositions);
     return {
       combo: comboKey,
       clearedPositions
@@ -494,6 +569,20 @@ export class ToyBlastEngine {
         }
       }
     }
+
+    // Prioritize colors that still have active level objectives!
+    if (this.goals.cubes) {
+      let bestGoalColor = null;
+      let maxGoalCount = 0;
+      for (const [col, rem] of Object.entries(this.goals.cubes)) {
+        if (rem > 0 && (counts[col] || 0) > maxGoalCount) {
+          maxGoalCount = counts[col];
+          bestGoalColor = col;
+        }
+      }
+      if (bestGoalColor) return bestGoalColor;
+    }
+
     let best = this.currentLevel.colors[0];
     let max = -1;
     for (const [col, count] of Object.entries(counts)) {
@@ -505,44 +594,62 @@ export class ToyBlastEngine {
     return best;
   }
 
+  /**
+   * Processes cleared cells with full recursive chain-detonation when a blast wave hits another booster!
+   */
   processClearedCells(positions) {
-    const unique = new Set();
-    for (const p of positions) {
+    const queue = [...positions];
+    const visited = new Set();
+    const clearedList = [];
+
+    while (queue.length > 0) {
+      const p = queue.shift();
       const key = `${p.r},${p.c}`;
-      if (!unique.has(key)) {
-        unique.add(key);
-        const cell = this.grid[p.r][p.c];
-        if (!cell) continue;
+      if (visited.has(key)) continue;
+      visited.add(key);
 
-        // Collect cube goal
-        if (cell.color && this.goals.cubes && this.goals.cubes[cell.color] > 0) {
-          this.goals.cubes[cell.color]--;
-        }
+      const cell = this.grid[p.r]?.[p.c];
+      if (!cell || cell.type === CELL_TYPES.EMPTY) continue;
 
-        // Crate damage
-        if (cell.type === CELL_TYPES.CRATE) {
-          if (this.goals.crates > 0) this.goals.crates--;
-        }
+      // If this cell is ANOTHER booster on the board, chain-detonate it!
+      if (this.isBooster(cell)) {
+        const subType = cell.type;
+        const subColor = cell.color;
+        this.grid[p.r][p.c] = { type: CELL_TYPES.EMPTY };
+        clearedList.push(p);
+        const chained = this.getPositionsForBoosterEffect(subType, p.r, p.c, subColor);
+        queue.push(...chained);
+        this.score += 150;
+        continue;
+      }
 
-        // Bubble pop
-        if (cell.bubble) {
-          cell.bubble = false;
-          if (this.goals.bubbles > 0) this.goals.bubbles--;
-        }
+      if (cell.color && this.goals.cubes && this.goals.cubes[cell.color] > 0) {
+        this.goals.cubes[cell.color]--;
+      }
 
-        // Clear if not duck (ducks only exit at the bottom!)
-        if (cell.type !== CELL_TYPES.DUCK) {
-          this.grid[p.r][p.c] = { type: CELL_TYPES.EMPTY };
-        }
+      if (cell.type === CELL_TYPES.CRATE) {
+        if (this.goals.crates > 0) this.goals.crates--;
+      }
+
+      if (cell.bubble) {
+        cell.bubble = false;
+        if (this.goals.bubbles > 0) this.goals.bubbles--;
+      }
+
+      // Ducks cannot be blown up; they drop to the bottom row!
+      if (cell.type !== CELL_TYPES.DUCK) {
+        this.grid[p.r][p.c] = { type: CELL_TYPES.EMPTY };
+        clearedList.push(p);
       }
     }
+
+    return clearedList;
   }
 
   applyGravityAndRefill() {
     const rows = this.currentLevel.rows;
     const cols = this.currentLevel.cols;
 
-    // Drop items down column by column
     for (let c = 0; c < cols; c++) {
       let writeRow = rows - 1;
       for (let r = rows - 1; r >= 0; r--) {
@@ -556,7 +663,6 @@ export class ToyBlastEngine {
         }
       }
 
-      // Fill remaining empty cells from top with new random cubes
       while (writeRow >= 0) {
         this.grid[writeRow][c] = this.createRandomCube(this.currentLevel.colors);
         writeRow--;
@@ -569,12 +675,10 @@ export class ToyBlastEngine {
     for (let c = 0; c < this.currentLevel.cols; c++) {
       const item = this.grid[bottomRow][c];
       if (item && item.type === CELL_TYPES.DUCK) {
-        // Rescued!
         this.grid[bottomRow][c] = { type: CELL_TYPES.EMPTY };
         if (this.goals.ducks > 0) this.goals.ducks--;
         this.score += 500;
         this.applyGravityAndRefill();
-        // Re-check in case another duck dropped down
         this.checkDucksAtBottom();
         break;
       }
@@ -582,17 +686,13 @@ export class ToyBlastEngine {
   }
 
   checkGoalsSatisfied() {
-    // Check cubes
     if (this.goals.cubes) {
       for (const count of Object.values(this.goals.cubes)) {
         if (count > 0) return false;
       }
     }
-    // Check crates
     if (this.goals.crates > 0) return false;
-    // Check ducks
     if (this.goals.ducks > 0) return false;
-    // Check bubbles
     if (this.goals.bubbles > 0) return false;
 
     return true;
@@ -602,11 +702,9 @@ export class ToyBlastEngine {
     if (this.checkGoalsSatisfied()) {
       this.isWon = true;
 
-      // Bonus points for remaining moves!
       const moveBonus = this.movesLeft * 250;
       this.score += moveBonus;
 
-      // Calculate star rating
       const thresholds = this.currentLevel.starThresholds;
       if (this.score >= thresholds[2]) {
         this.stars = 3;
@@ -616,11 +714,9 @@ export class ToyBlastEngine {
         this.stars = 1;
       }
 
-      // Award coins
       const coinsEarned = this.stars * 15;
       this.totalCoins += coinsEarned;
 
-      // Save progress
       if (!this.levelStars[this.levelIndex] || this.stars > this.levelStars[this.levelIndex]) {
         this.levelStars[this.levelIndex] = this.stars;
       }

@@ -1,13 +1,14 @@
 /**
  * Toy Blast UI Controller
- * Renders the tap-to-blast mobile interface, animated particle blasts,
- * live objective counters, booster combos, and victory celebrations.
+ * Renders molded 3D toy blocks with embossed colorblind-accessible symbols,
+ * directional horizontal/vertical rotor propellers, particle bursts, and celebrations.
  */
 
 import { Icons } from '../icons.js';
 import { sound } from '../sound.js';
 import { CELL_TYPES } from './engine.js';
 import { TOY_BLAST_LEVELS } from './levels.js';
+import { showToast } from '../toast.js';
 
 export class ToyBlastUI {
   constructor(engine, container, options = {}) {
@@ -18,6 +19,11 @@ export class ToyBlastUI {
     this.onUserSwitch = options.onUserSwitch || (() => {});
 
     this.render();
+  }
+
+  destroy() {
+    // Clean up any stray particle bursts
+    document.querySelectorAll('.tb-particle-burst').forEach(el => el.remove());
   }
 
   render() {
@@ -99,11 +105,28 @@ export class ToyBlastUI {
     return Math.min(100, Math.round((this.engine.score / maxThreshold) * 100));
   }
 
+  getCubeMotifSVG(color) {
+    // Embossed toy block symbols for tactile charm & colorblind clarity
+    switch (color) {
+      case 'red':
+        return `<svg class="tb-cube-motif" viewBox="0 0 24 24"><path fill="currentColor" d="M12 20.5l-1.3-1.2C6 15 3 12.2 3 8.8 3 6.1 5.1 4 7.8 4c1.5 0 3 .7 4.2 1.9C13.2 4.7 14.7 4 16.2 4 18.9 4 21 6.1 21 8.8c0 3.4-3 6.2-7.7 10.5L12 20.5z"/></svg>`;
+      case 'blue':
+        return `<svg class="tb-cube-motif" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c-4 5.2-6 8.4-6 11.2A6 6 0 0 0 18 14.2C18 11.4 16 8.2 12 3z"/></svg>`;
+      case 'green':
+        return `<svg class="tb-cube-motif" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4a3.5 3.5 0 0 0-3.5 3.5c0 1.1.5 2 1.3 2.7A3.5 3.5 0 0 0 5 13.5 3.5 3.5 0 0 0 8.5 17c1.2 0 2.2-.5 2.8-1.4L10 20h4l-1.3-4.4c.6.9 1.6 1.4 2.8 1.4a3.5 3.5 0 0 0 3.5-3.5 3.5 3.5 0 0 0-4.8-3.3c.8-.7 1.3-1.6 1.3-2.7A3.5 3.5 0 0 0 12 4z"/></svg>`;
+      case 'yellow':
+        return `<svg class="tb-cube-motif" viewBox="0 0 24 24"><polygon fill="currentColor" points="12 3 14.8 8.6 21 9.5 16.5 13.9 17.6 20 12 17.1 6.4 20 7.5 13.9 3 9.5 9.2 8.6 12 3"/></svg>`;
+      case 'purple':
+        return `<svg class="tb-cube-motif" viewBox="0 0 24 24"><polygon fill="currentColor" points="12 3 20 12 12 21 4 12 12 3"/></svg>`;
+      default:
+        return '';
+    }
+  }
+
   renderGoalsHTML() {
     const goals = this.engine.goals;
     const parts = [];
 
-    // Cubes
     if (goals.cubes) {
       for (const [col, count] of Object.entries(goals.cubes)) {
         const isDone = count <= 0;
@@ -116,7 +139,6 @@ export class ToyBlastUI {
       }
     }
 
-    // Crates
     if (goals.crates !== undefined && this.engine.currentLevel.goals.crates) {
       const isDone = goals.crates <= 0;
       parts.push(`
@@ -127,7 +149,6 @@ export class ToyBlastUI {
       `);
     }
 
-    // Ducks
     if (goals.ducks !== undefined && this.engine.currentLevel.goals.ducks) {
       const isDone = goals.ducks <= 0;
       parts.push(`
@@ -138,7 +159,6 @@ export class ToyBlastUI {
       `);
     }
 
-    // Bubbles
     if (goals.bubbles !== undefined && this.engine.currentLevel.goals.bubbles) {
       const isDone = goals.bubbles <= 0;
       parts.push(`
@@ -176,19 +196,22 @@ export class ToyBlastUI {
 
     if (cell.type === CELL_TYPES.CUBE) {
       cellClass += ` color-${cell.color}`;
-      innerContent = `<span class="tb-cube-face"></span>`;
+      innerContent = `
+        <span class="tb-cube-face"></span>
+        ${this.getCubeMotifSVG(cell.color)}
+      `;
     } else if (cell.type === CELL_TYPES.ROTOR_H) {
       cellClass += ` tb-booster tb-rotor-h`;
-      innerContent = `<span class="booster-icon">${Icons.rocket('rotor-svg', 24)}</span>`;
+      innerContent = `<span class="booster-icon" title="Horizontal Rotor (Clears Row)">${Icons.rotorH('rotor-svg', 26)}</span>`;
     } else if (cell.type === CELL_TYPES.ROTOR_V) {
       cellClass += ` tb-booster tb-rotor-v`;
-      innerContent = `<span class="booster-icon">${Icons.rocket('rotor-svg', 24)}</span>`;
+      innerContent = `<span class="booster-icon" title="Vertical Rotor (Clears Column)">${Icons.rotorV('rotor-svg', 26)}</span>`;
     } else if (cell.type === CELL_TYPES.BOMB) {
       cellClass += ` tb-booster tb-bomb`;
-      innerContent = `<span class="booster-icon">${Icons.bomb('bomb-svg', 24)}</span>`;
+      innerContent = `<span class="booster-icon" title="TNT Bomb (3x3 Blast)">${Icons.bomb('bomb-svg', 25)}</span>`;
     } else if (cell.type === CELL_TYPES.DISCO) {
-      cellClass += ` tb-booster tb-disco`;
-      innerContent = `<span class="booster-icon">${Icons.discoBall('disco-svg', 24)}</span>`;
+      cellClass += ` tb-booster tb-disco ${cell.color ? `disco-${cell.color}` : ''}`;
+      innerContent = `<span class="booster-icon" title="Disco Ball">${Icons.discoBall('disco-svg', 26)}</span>`;
     } else if (cell.type === CELL_TYPES.CRATE) {
       cellClass += ` tb-obstacle tb-crate`;
       innerContent = `<span class="obstacle-icon">${Icons.crate('crate-svg', 28)}</span>`;
@@ -233,6 +256,7 @@ export class ToyBlastUI {
       sound.playPop(0.9);
       this.engine.restartLevel();
       this.updateFullUI();
+      showToast('Level restarted', 'info', 1600);
     });
   }
 
@@ -240,9 +264,15 @@ export class ToyBlastUI {
     const res = this.engine.tapCell(r, c);
 
     if (res.status === 'blasted') {
-      sound.playPop(1 + Math.random() * 0.3);
+      sound.playPop(1 + Math.min(res.groupSize * 0.06, 0.45));
+      if (res.createdBooster) {
+        sound.playChime();
+      }
       this.triggerBlastParticles(cellEl);
       this.updateFullUI();
+      if (res.autoShuffled) {
+        showToast('No clusters left - Auto-shuffling blocks!', 'shuffle', 2200);
+      }
     } else if (res.status === 'booster_activated') {
       if (res.combo) {
         sound.playChime();
@@ -255,7 +285,14 @@ export class ToyBlastUI {
         sound.playChime();
       }
       this.triggerBlastParticles(cellEl);
+      const gridEl = this.container.querySelector('#tbGrid');
+      gridEl?.classList.add('board-shake');
+      setTimeout(() => gridEl?.classList.remove('board-shake'), 300);
+
       this.updateFullUI();
+      if (res.autoShuffled) {
+        showToast('No clusters left - Auto-shuffling blocks!', 'shuffle', 2200);
+      }
     } else if (res.status === 'group_too_small') {
       sound.playCardSlide();
       cellEl.classList.add('shake');
@@ -263,9 +300,9 @@ export class ToyBlastUI {
     }
 
     if (this.engine.isWon) {
-      setTimeout(() => this.showVictoryModal(), 600);
+      setTimeout(() => this.showVictoryModal(), 550);
     } else if (this.engine.isLost) {
-      setTimeout(() => this.showDefeatModal(), 600);
+      setTimeout(() => this.showDefeatModal(), 550);
     }
   }
 
@@ -345,7 +382,7 @@ export class ToyBlastUI {
           </div>
           <div class="v-stat">
             <span class="stat-l">Coins Earned</span>
-            <span class="stat-v">+${this.engine.stars * 15} 🪙</span>
+            <span class="stat-v">+${this.engine.stars * 15} ${Icons.coin('inline-coin', 16)}</span>
           </div>
         </div>
 
@@ -386,7 +423,7 @@ export class ToyBlastUI {
       <div class="tb-modal-card defeat">
         <div class="tb-modal-header">
           <h2>OUT OF MOVES!</h2>
-          <p>Don't give up! Combine bigger cube clusters to make rockets and bombs.</p>
+          <p>Combine bigger cube clusters (5+, 7+, 9+) to create Rotors, Bombs, and Disco Balls!</p>
         </div>
 
         <div class="tb-defeat-goals">
@@ -428,17 +465,16 @@ export class ToyBlastUI {
       <div class="tb-modal-card levels-modal">
         <div class="tb-modal-header">
           <h2>Toy Blast Levels</h2>
-          <p>Select any unlocked puzzle level</p>
+          <p>Select any puzzle level</p>
         </div>
 
         <div class="tb-levels-grid">
           ${TOY_BLAST_LEVELS.map((lvl, idx) => {
-            const isUnlocked = idx <= this.engine.highestLevelUnlocked;
             const stars = this.engine.levelStars[idx] || 0;
             const isCurrent = idx === this.engine.levelIndex;
 
             return `
-              <button type="button" class="tb-lvl-card ${isUnlocked ? 'unlocked' : 'locked'} ${isCurrent ? 'active' : ''}" data-idx="${idx}" ${isUnlocked ? '' : 'disabled'}>
+              <button type="button" class="tb-lvl-card unlocked ${isCurrent ? 'active' : ''}" data-idx="${idx}">
                 <span class="lvl-num">${idx + 1}</span>
                 <span class="lvl-name">${lvl.name}</span>
                 <div class="lvl-stars">
@@ -461,7 +497,7 @@ export class ToyBlastUI {
 
     this.container.appendChild(modal);
 
-    modal.querySelectorAll('.tb-lvl-card.unlocked').forEach(btn => {
+    modal.querySelectorAll('.tb-lvl-card').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx, 10);
         modal.remove();
@@ -483,24 +519,24 @@ export class ToyBlastUI {
       <div class="tb-modal-card guide-modal">
         <div class="tb-modal-header">
           <h2>Toy Blast Guide</h2>
-          <p>Rules, Boosters & Combos</p>
+          <p>Rules, Boosters & Chain Reactions</p>
         </div>
 
         <div class="tb-guide-scroll">
           <div class="guide-section">
             <h3>Match Sizes & Boosters</h3>
             <div class="guide-item">
-              <span class="g-icon">${Icons.rocket('g-svg', 24)}</span>
+              <span class="g-icon">${Icons.rotorH('g-svg', 24)}</span>
               <div class="g-text">
-                <strong>Rotor / Rocket (5–6 Cubes)</strong>
-                <p>Blasts an entire row or column across the toy board.</p>
+                <strong>Rotor Propeller (5-6 Cubes)</strong>
+                <p>Blasts an entire horizontal row or vertical column based on cluster shape.</p>
               </div>
             </div>
             <div class="guide-item">
               <span class="g-icon">${Icons.bomb('g-svg', 24)}</span>
               <div class="g-text">
-                <strong>Bomb / TNT (7–8 Cubes)</strong>
-                <p>Detonates a 3×3 explosion destroying blocks and obstacles.</p>
+                <strong>TNT Bomb (7-8 Cubes)</strong>
+                <p>Detonates a 3x3 explosion destroying blocks and crates.</p>
               </div>
             </div>
             <div class="guide-item">
@@ -518,18 +554,9 @@ export class ToyBlastUI {
             <ul>
               <li><strong>Rotor + Rotor:</strong> Clears both row and column in a cross blast.</li>
               <li><strong>Bomb + Rotor:</strong> Clears 3 entire rows and 3 entire columns!</li>
-              <li><strong>Bomb + Bomb:</strong> Giant 5×5 mega explosion.</li>
-              <li><strong>Disco + Rotor/Bomb:</strong> Transforms all cubes of that color into boosters and detonates all!</li>
+              <li><strong>Bomb + Bomb:</strong> Giant 5x5 mega explosion.</li>
+              <li><strong>Disco + Rotor/Bomb:</strong> Transforms all cubes of that color into Rotors/Bombs and detonates them all!</li>
               <li><strong>Disco + Disco:</strong> Clears the ENTIRE board!</li>
-            </ul>
-          </div>
-
-          <div class="guide-section">
-            <h3>Level Objectives</h3>
-            <ul>
-              <li><strong>Crates:</strong> Blast cubes next to wooden crates to break them open.</li>
-              <li><strong>Ducks:</strong> Clear cubes underneath ducks until they reach the bottom row!</li>
-              <li><strong>Bubbles:</strong> Blast trapped cubes or match adjacent to pop them.</li>
             </ul>
           </div>
         </div>
