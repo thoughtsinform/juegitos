@@ -1,7 +1,7 @@
 /**
  * Walking Step Counter & Goal Countdown
  * Uses HTML5 DeviceMotionEvent accelerometer + low-pass filter + peak detection.
- * Persists session steps and user-customized goals.
+ * Persists session steps, goals, and automatic tracking permissions.
  */
 
 import { sound } from './sound.js';
@@ -14,7 +14,6 @@ export class StepCounter {
     // Load persisted state
     this.goal = this.loadStoredGoal();
     this.steps = this.loadStoredSteps();
-    this.isActive = false;
     this.isListening = false;
     this.goalCelebrated = false;
 
@@ -27,6 +26,7 @@ export class StepCounter {
 
     this.onMotion = this.onMotion.bind(this);
     this.render();
+    this.initAutoTracking();
   }
 
   setUser(user) {
@@ -64,35 +64,79 @@ export class StepCounter {
     }
   }
 
-  async startTracking() {
-    // iOS 13+ requires explicit user gesture to allow DeviceMotionEvent
+  /**
+   * Automatic permission & auto-start tracking
+   * Persists permission state and attaches listener on first user touch if required by iOS.
+   */
+  initAutoTracking() {
+    const isGranted = localStorage.getItem('juegitos_motion_permission') === 'granted';
+
+    // If DeviceMotionEvent exists without iOS permission API (Android, Chrome, desktop)
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
+      this.startListening();
+      return;
+    }
+
+    // On iOS: if already granted in this session/origin, start listening
+    if (isGranted) {
+      this.startListening();
+    }
+
+    // Attach silent, automatic user gesture listener for iOS
+    const onUserInteraction = async () => {
+      window.removeEventListener('pointerdown', onUserInteraction);
+      window.removeEventListener('touchstart', onUserInteraction);
+      window.removeEventListener('click', onUserInteraction);
+      await this.requestAndStart();
+    };
+
+    window.addEventListener('pointerdown', onUserInteraction, { once: true, passive: true });
+    window.addEventListener('touchstart', onUserInteraction, { once: true, passive: true });
+    window.addEventListener('click', onUserInteraction, { once: true, passive: true });
+  }
+
+  async requestAndStart() {
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
       try {
         const response = await DeviceMotionEvent.requestPermission();
-        if (response !== 'granted') {
+        if (response === 'granted') {
+          localStorage.setItem('juegitos_motion_permission', 'granted');
+          this.startListening();
+          return true;
+        } else {
           console.warn('Device motion permission denied');
-          return false;
         }
       } catch (err) {
         console.warn('Error requesting device motion permission:', err);
       }
-    }
-
-    if (!this.isListening && window.DeviceMotionEvent) {
-      window.addEventListener('devicemotion', this.onMotion, { passive: true });
-      this.isListening = true;
-      this.isActive = true;
-      this.updateDisplay();
+    } else {
+      this.startListening();
       return true;
     }
     return false;
   }
 
-  stopTracking() {
+  startListening() {
+    if (!this.isListening && window.DeviceMotionEvent) {
+      window.addEventListener('devicemotion', this.onMotion, { passive: true });
+      this.isListening = true;
+      this.updateDisplay();
+    }
+  }
+
+  stopListening() {
     if (this.isListening) {
       window.removeEventListener('devicemotion', this.onMotion);
       this.isListening = false;
       this.updateDisplay();
+    }
+  }
+
+  toggleTracking() {
+    if (this.isListening) {
+      this.stopListening();
+    } else {
+      this.requestAndStart();
     }
   }
 
@@ -161,40 +205,72 @@ export class StepCounter {
 
     this.container.innerHTML = `
       <div class="step-counter-bar" id="stepCounterBar">
-        <div class="step-main-pill" id="stepPill">
-          <span class="step-icon">👟</span>
-          <div class="step-data">
-            <span class="step-live" id="stepLiveText"><b>${this.steps.toLocaleString()}</b> steps</span>
-            <span class="step-countdown" id="stepCountdownText"></span>
+        <div class="step-deck">
+          <!-- 1. Live Steps & Remaining -->
+          <div class="step-card card-steps">
+            <span class="card-icon">👟</span>
+            <div class="card-content">
+              <div class="card-head">
+                <span class="card-val" id="stepLiveVal">${this.steps.toLocaleString()}</span>
+                <span class="card-label">STEPS</span>
+              </div>
+              <div class="card-sub" id="stepCountdownText"></div>
+            </div>
           </div>
-          <div class="step-progress-track">
-            <div class="step-progress-fill" id="stepProgressBar"></div>
-          </div>
+
+          <!-- 2. Goal Target (Tap to Edit) -->
+          <button type="button" class="step-card card-goal" id="editGoalBtn" title="Set daily step goal">
+            <span class="card-icon">🎯</span>
+            <div class="card-content">
+              <div class="card-head">
+                <span class="card-val" id="stepGoalVal">${this.goal.toLocaleString()}</span>
+                <span class="card-label">GOAL</span>
+              </div>
+              <div class="card-sub">Tap to edit</div>
+            </div>
+          </button>
+
+          <!-- 3. Sensor State (Auto-tracking status / Pause) -->
+          <button type="button" class="step-card card-status ${this.isListening ? 'is-tracking' : ''}" id="toggleSensorBtn" title="Start/Pause automatic pedometer">
+            <span class="card-icon status-dot" id="statusDot">${this.isListening ? '🟢' : '⏸️'}</span>
+            <div class="card-content">
+              <div class="card-head">
+                <span class="card-val" id="statusText">${this.isListening ? 'ACTIVE' : 'PAUSED'}</span>
+                <span class="card-label">PEDO</span>
+              </div>
+              <div class="card-sub" id="statusSub">${this.isListening ? 'Auto-tracking' : 'Tap to start'}</div>
+            </div>
+          </button>
+
+          <!-- 4. Quick Manual Add (+100) -->
+          <button type="button" class="step-card card-add" id="manualAddBtn" title="Add 100 steps manually">
+            <span class="card-icon">➕</span>
+            <div class="card-content">
+              <div class="card-head">
+                <span class="card-val">+100</span>
+                <span class="card-label">ADD</span>
+              </div>
+              <div class="card-sub">Steps</div>
+            </div>
+          </button>
         </div>
 
-        <div class="step-actions">
-          <button class="step-btn edit-goal-btn" id="editGoalBtn" title="Change Step Goal">🎯 Goal: ${this.goal.toLocaleString()}</button>
-          <button class="step-btn toggle-sensor-btn ${this.isListening ? 'active' : ''}" id="toggleSensorBtn" title="Start/Pause Pedometer">
-            ${this.isListening ? '⏸️ Walking' : '▶️ Walk'}
-          </button>
-          <button class="step-btn manual-add-btn" id="manualAddBtn" title="Add 100 steps manually">+100</button>
+        <!-- Sleek progress track along bottom edge -->
+        <div class="step-banner-progress-track">
+          <div class="step-banner-progress-fill" id="stepProgressBar"></div>
         </div>
       </div>
     `;
 
-    // Wire listeners
+    // Wire events
     const toggleBtn = this.container.querySelector('#toggleSensorBtn');
     toggleBtn?.addEventListener('click', () => {
-      if (this.isListening) {
-        this.stopTracking();
-      } else {
-        this.startTracking();
-      }
+      this.toggleTracking();
     });
 
     const editGoalBtn = this.container.querySelector('#editGoalBtn');
     editGoalBtn?.addEventListener('click', () => {
-      const input = prompt(`Set your daily walking step goal for ${this.user}:`, this.goal);
+      const input = prompt(`Set your walking step goal for ${this.user}:`, this.goal);
       if (input !== null) {
         this.setGoal(input);
       }
@@ -210,14 +286,21 @@ export class StepCounter {
   }
 
   updateDisplay() {
-    const liveText = this.container?.querySelector('#stepLiveText');
+    const liveVal = this.container?.querySelector('#stepLiveVal');
     const countdownText = this.container?.querySelector('#stepCountdownText');
+    const goalVal = this.container?.querySelector('#stepGoalVal');
     const progressBar = this.container?.querySelector('#stepProgressBar');
-    const toggleBtn = this.container?.querySelector('#toggleSensorBtn');
-    const editGoalBtn = this.container?.querySelector('#editGoalBtn');
+    const statusCard = this.container?.querySelector('.card-status');
+    const statusDot = this.container?.querySelector('#statusDot');
+    const statusText = this.container?.querySelector('#statusText');
+    const statusSub = this.container?.querySelector('#statusSub');
 
-    if (liveText) {
-      liveText.innerHTML = `<b>${this.steps.toLocaleString()}</b> steps`;
+    if (liveVal) {
+      liveVal.textContent = this.steps.toLocaleString();
+    }
+
+    if (goalVal) {
+      goalVal.textContent = this.goal.toLocaleString();
     }
 
     const remaining = Math.max(0, this.goal - this.steps);
@@ -227,7 +310,7 @@ export class StepCounter {
       if (remaining === 0) {
         countdownText.innerHTML = `<span class="goal-met-badge">🎉 Goal Met! (${pct}%)</span>`;
       } else {
-        countdownText.innerHTML = `<span class="countdown-num">${remaining.toLocaleString()}</span> to goal (${pct}%)`;
+        countdownText.innerHTML = `<span class="countdown-num">${remaining.toLocaleString()}</span> left (${pct}%)`;
       }
     }
 
@@ -235,13 +318,20 @@ export class StepCounter {
       progressBar.style.width = `${pct}%`;
     }
 
-    if (toggleBtn) {
-      toggleBtn.innerHTML = this.isListening ? '⏸️ Walking' : '▶️ Walk';
-      toggleBtn.classList.toggle('active', this.isListening);
+    if (statusCard) {
+      statusCard.classList.toggle('is-tracking', this.isListening);
     }
 
-    if (editGoalBtn) {
-      editGoalBtn.innerHTML = `🎯 Goal: ${this.goal.toLocaleString()}`;
+    if (statusDot) {
+      statusDot.textContent = this.isListening ? '🟢' : '⏸️';
+    }
+
+    if (statusText) {
+      statusText.textContent = this.isListening ? 'ACTIVE' : 'PAUSED';
+    }
+
+    if (statusSub) {
+      statusSub.textContent = this.isListening ? 'Auto-tracking' : 'Tap to start';
     }
   }
 }

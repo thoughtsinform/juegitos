@@ -93,6 +93,7 @@ class App {
         sound.playStepGoalMet();
         this.hideLogin();
         this.launchGame();
+        this.stepCounter?.requestAndStart();
       } else {
         if (errorEl) errorEl.textContent = res.error;
       }

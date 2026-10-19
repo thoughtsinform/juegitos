@@ -132,11 +132,43 @@ export class SpiderUI {
   wireControls() {
     const chevron = this.container.querySelector('#drawerChevronBtn');
     const drawer = this.container.querySelector('#bottomDrawerWrapper');
+    const wrapper = this.container.querySelector('#spiderGameWrapper');
+
+    // 1. Initial State: Default OPEN on vertical (portrait), default COLLAPSED on horizontal (landscape)
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if (!isLandscape) {
+      drawer?.classList.add('is-open');
+      wrapper?.classList.add('drawer-open');
+    } else {
+      drawer?.classList.remove('is-open');
+      wrapper?.classList.remove('drawer-open');
+    }
+
+    let userManuallyToggled = false;
 
     chevron?.addEventListener('click', () => {
-      drawer?.classList.toggle('is-open');
+      const isOpen = drawer?.classList.toggle('is-open');
+      wrapper?.classList.toggle('drawer-open', isOpen);
+      userManuallyToggled = true;
       sound.playCardSlide();
     });
+
+    // Auto-collapse when rotating to horizontal, auto-open when rotating to vertical
+    const onOrientationChange = () => {
+      const landscapeNow = window.innerWidth > window.innerHeight;
+      if (landscapeNow) {
+        drawer?.classList.remove('is-open');
+        wrapper?.classList.remove('drawer-open');
+      } else {
+        if (!userManuallyToggled) {
+          drawer?.classList.add('is-open');
+          wrapper?.classList.add('drawer-open');
+        }
+      }
+    };
+
+    window.addEventListener('resize', onOrientationChange);
+    window.addEventListener('orientationchange', onOrientationChange);
 
     // Undo button
     this.container.querySelector('#drawerUndoBtn')?.addEventListener('click', () => {
@@ -153,7 +185,10 @@ export class SpiderUI {
 
     // New game
     this.container.querySelector('#drawerNewGameBtn')?.addEventListener('click', () => {
-      drawer?.classList.remove('is-open');
+      if (window.innerWidth > window.innerHeight) {
+        drawer?.classList.remove('is-open');
+        wrapper?.classList.remove('drawer-open');
+      }
       sound.playDealWhoosh(0);
       this.engine.startNewGame(this.engine.difficulty);
       this.render();
@@ -161,7 +196,10 @@ export class SpiderUI {
 
     // Restart
     this.container.querySelector('#drawerRestartBtn')?.addEventListener('click', () => {
-      drawer?.classList.remove('is-open');
+      if (window.innerWidth > window.innerHeight) {
+        drawer?.classList.remove('is-open');
+        wrapper?.classList.remove('drawer-open');
+      }
       this.engine.startNewGame(this.engine.difficulty);
       this.render();
     });
@@ -172,7 +210,10 @@ export class SpiderUI {
         const diff = parseInt(e.currentTarget.dataset.diff, 10);
         this.container.querySelectorAll('.diff-pill').forEach(b => b.classList.remove('active'));
         e.currentTarget.classList.add('active');
-        drawer?.classList.remove('is-open');
+        if (window.innerWidth > window.innerHeight) {
+          drawer?.classList.remove('is-open');
+          wrapper?.classList.remove('drawer-open');
+        }
         this.engine.startNewGame(diff);
         this.render();
       });

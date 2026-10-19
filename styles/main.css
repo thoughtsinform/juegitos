@@ -26,7 +26,7 @@ html, body {
   height: 100%;
   overflow: hidden;
   position: fixed;
-  background: var(--felt-dark);
+  background: #03200c;
   font-family: var(--font-hud);
   color: var(--text-white);
 }
@@ -37,7 +37,6 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--felt-vignette);
-  padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
   padding-left: env(safe-area-inset-left, 0);
   padding-right: env(safe-area-inset-right, 0);
@@ -301,17 +300,17 @@ html, body {
 }
 
 .drawer-chevron-btn {
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #0d381c;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-bottom: none;
   border-radius: 16px 16px 0 0;
   color: #fff;
-  padding: 4px 24px;
+  padding: 5px 28px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.4);
   transition: transform 0.3s;
 }
 
@@ -517,5 +516,10 @@ html, body {
   .spider-tableau {
     gap: 3px;
     padding: 6px 4px 60px 4px;
+    transition: padding-bottom 0.3s ease;
+  }
+
+  .spider-game-wrapper.drawer-open .spider-tableau {
+    padding-bottom: 260px;
   }
 }
