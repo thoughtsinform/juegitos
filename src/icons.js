@@ -205,5 +205,165 @@ export const Icons = {
     <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <polyline points="18 15 12 9 6 15"></polyline>
     </svg>
+  `,
+
+  // Toy Blast - Cube / Toy Blocks icon
+  toyBlocks: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="2" y="3" width="9" height="9" rx="2" fill="rgba(239, 68, 68, 0.25)" stroke="#ef4444"></rect>
+      <rect x="13" y="3" width="9" height="9" rx="2" fill="rgba(59, 130, 246, 0.25)" stroke="#3b82f6"></rect>
+      <rect x="2" y="14" width="9" height="9" rx="2" fill="rgba(234, 179, 8, 0.25)" stroke="#eab308"></rect>
+      <rect x="13" y="14" width="9" height="9" rx="2" fill="rgba(34, 197, 94, 0.25)" stroke="#22c55e"></rect>
+    </svg>
+  `,
+
+  // Rocket / Rotor Booster
+  rocket: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+      <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" fill="rgba(239, 68, 68, 0.2)"></path>
+      <circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"></circle>
+    </svg>
+  `,
+
+  // Bomb / TNT Booster
+  bomb: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="13" r="8" fill="rgba(244, 63, 94, 0.2)"></circle>
+      <path d="M14.35 4.65l1.41-1.41a2 2 0 0 1 2.83 0l1.41 1.41a2 2 0 0 1 0 2.83l-1.41 1.41"></path>
+      <path d="M19 2l2 2M21 7l2-1M17 1l-1 2"></path>
+    </svg>
+  `,
+
+  // Disco Ball / Magic Puzzle Cube
+  discoBall: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="13" r="8" fill="rgba(168, 85, 247, 0.25)" stroke="#a855f7"></circle>
+      <line x1="12" y1="2" x2="12" y2="5"></line>
+      <line x1="8" y1="7" x2="16" y2="7"></line>
+      <line x1="6" y1="11" x2="18" y2="11"></line>
+      <line x1="6" y1="15" x2="18" y2="15"></line>
+      <line x1="8" y1="19" x2="16" y2="19"></line>
+      <line x1="12" y1="5" x2="12" y2="21"></line>
+    </svg>
+  `,
+
+  // Duck Goal
+  duck: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M7 11c-2.5 0-4 1.5-4 4 0 3 2.5 5 7 5 5 0 8-3 9-6a3 3 0 0 0-3-3H7z" fill="rgba(250, 204, 21, 0.2)"></path>
+      <circle cx="15.5" cy="7.5" r="3.5" fill="rgba(250, 204, 21, 0.2)"></circle>
+      <circle cx="16.5" cy="7" r="0.8" fill="currentColor"></circle>
+      <path d="M19 7.5l3 .5-3 1.5"></path>
+    </svg>
+  `,
+
+  // Wooden Crate Obstacle
+  crate: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" fill="rgba(217, 119, 6, 0.2)" stroke="#b45309"></rect>
+      <line x1="3" y1="3" x2="21" y2="21" stroke="#b45309"></line>
+      <line x1="21" y1="3" x2="3" y2="21" stroke="#b45309"></line>
+    </svg>
+  `,
+
+  // Bubble Obstacle
+  bubble: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" fill="rgba(56, 189, 248, 0.2)" stroke="#38bdf8"></circle>
+      <path d="M8 8a5 5 0 0 1 5-2" stroke="#38bdf8"></path>
+    </svg>
+  `,
+
+  // Matchington - Mansion / Villa
+  mansion: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 10l9-7 9 7v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10z" fill="rgba(147, 51, 234, 0.15)"></path>
+      <rect x="9" y="14" width="6" height="8" rx="1"></rect>
+      <rect x="6" y="10" width="3" height="3" rx="0.5"></rect>
+      <rect x="15" y="10" width="3" height="3" rx="0.5"></rect>
+    </svg>
+  `,
+
+  // Sofa / Furniture / Renovation
+  sofa: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M2 13v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3" fill="rgba(236, 72, 153, 0.15)"></path>
+      <path d="M2 13a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v5H2v-5z"></path>
+      <line x1="4" y1="18" x2="4" y2="21"></line>
+      <line x1="20" y1="18" x2="20" y2="21"></line>
+    </svg>
+  `,
+
+  // Paper Plane Booster (Matchington)
+  paperPlane: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polygon points="22 2 15 22 11 13 2 9 22 2" fill="rgba(14, 165, 233, 0.2)"></polygon>
+      <line x1="22" y1="2" x2="11" y2="13"></line>
+    </svg>
+  `,
+
+  // Paintbrush / Interior Decorate
+  paintBrush: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18.37 2.63a2.12 2.12 0 0 1 3 3L13.5 13.5 8 14l.5-5.5 9.87-9.87z" fill="rgba(244, 114, 182, 0.2)"></path>
+      <path d="M14.5 4.5l5 5"></path>
+      <path d="M8 14c-2.5 1-4 3-4 6 0 1 1 2 2 2 3 0 5-1.5 6-4"></path>
+    </svg>
+  `,
+
+  // Renovation Key / Star Key
+  key: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="7.5" cy="15.5" r="4.5" fill="rgba(250, 204, 21, 0.2)"></circle>
+      <path d="M10.8 12.2L20 3"></path>
+      <path d="M16 3l4 4"></path>
+      <path d="M14 5l2 2"></path>
+    </svg>
+  `,
+
+  // Cushion / Pillow Tile
+  pillow: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" fill="rgba(56, 189, 248, 0.25)" stroke="#0ea5e9"></rect>
+      <path d="M3 12h18M12 3v18" stroke="#0ea5e9" stroke-dasharray="3 3"></path>
+    </svg>
+  `,
+
+  // Teacup Tile
+  teacup: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M17 8h1a4 4 0 0 1 0 8h-1"></path>
+      <path d="M3 8h14v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8z" fill="rgba(34, 197, 94, 0.25)" stroke="#16a34a"></path>
+      <line x1="2" y1="21" x2="20" y2="21"></line>
+    </svg>
+  `,
+
+  // Lamp Tile
+  lamp: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polygon points="6 11 18 11 15 4 9 4 6 11" fill="rgba(245, 158, 11, 0.25)" stroke="#d97706"></polygon>
+      <line x1="12" y1="11" x2="12" y2="18"></line>
+      <path d="M8 21h8"></path>
+    </svg>
+  `,
+
+  // Book Tile
+  book: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" fill="rgba(168, 85, 247, 0.25)" stroke="#9333ea"></path>
+    </svg>
+  `,
+
+  // Gem / Ruby Tile
+  gem: (cls = '', size = 20) => `
+    <svg class="svg-icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polygon points="6 3 18 3 22 9 12 22 2 9 6 3" fill="rgba(244, 63, 94, 0.25)" stroke="#e11d48"></polygon>
+      <line x1="2" y1="9" x2="22" y2="9"></line>
+      <line x1="12" y1="22" x2="6" y2="9"></line>
+      <line x1="12" y1="22" x2="18" y2="9"></line>
+    </svg>
   `
 };
+

@@ -8,7 +8,9 @@ import { Icons } from './icons.js';
 
 export const GAMES = {
   SPIDER: 'spider',
-  WOW: 'wow'
+  WOW: 'wow',
+  TOYBLAST: 'toyblast',
+  MATCHINGTON: 'matchington'
 };
 
 export class ArcadeNav {
@@ -49,10 +51,19 @@ export class ArcadeNav {
         </button>
         <button type="button" class="arcade-tab-btn ${this.activeGame === GAMES.WOW ? 'active' : ''}" data-game="${GAMES.WOW}">
           <span class="tab-icon-wrap">${Icons.tiles('tab-icon-svg', 18)}</span>
-          <span class="tab-name">Words of Wonder</span>
+          <span class="tab-name">Words</span>
+        </button>
+        <button type="button" class="arcade-tab-btn ${this.activeGame === GAMES.TOYBLAST ? 'active' : ''}" data-game="${GAMES.TOYBLAST}">
+          <span class="tab-icon-wrap">${Icons.toyBlocks('tab-icon-svg', 18)}</span>
+          <span class="tab-name">Toy Blast</span>
+        </button>
+        <button type="button" class="arcade-tab-btn ${this.activeGame === GAMES.MATCHINGTON ? 'active' : ''}" data-game="${GAMES.MATCHINGTON}">
+          <span class="tab-icon-wrap">${Icons.mansion('tab-icon-svg', 18)}</span>
+          <span class="tab-name">Matchington</span>
         </button>
       </nav>
     `;
+
 
     this.container.querySelectorAll('.arcade-tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {

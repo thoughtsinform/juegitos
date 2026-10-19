@@ -9,6 +9,10 @@ import { SpiderEngine } from './spider/engine.js';
 import { SpiderUI } from './spider/ui.js';
 import { WowEngine } from './wow/engine.js';
 import { WowUI } from './wow/ui.js';
+import { ToyBlastEngine } from './toyblast/engine.js';
+import { ToyBlastUI } from './toyblast/ui.js';
+import { MatchingtonEngine } from './matchington/engine.js';
+import { MatchingtonUI } from './matchington/ui.js';
 import { ArcadeNav, GAMES } from './arcade-nav.js';
 import { sound } from './sound.js';
 
@@ -23,11 +27,16 @@ class App {
     this.spiderUI = null;
     this.wowEngine = null;
     this.wowUI = null;
+    this.toyBlastEngine = null;
+    this.toyBlastUI = null;
+    this.matchingtonEngine = null;
+    this.matchingtonUI = null;
 
     this.stepContainer = document.getElementById('stepBannerContainer');
     this.arcadeNavContainer = document.getElementById('arcadeNavContainer');
     this.gameContainer = document.getElementById('gameContainer');
     this.loginModal = document.getElementById('loginModal');
+
 
     this.init();
   }
@@ -176,8 +185,33 @@ class App {
         onUserLogout: () => this.handleLogout(),
         onUserSwitch: () => this.handleSwitchUser()
       });
+    } else if (game === GAMES.TOYBLAST) {
+      if (!this.toyBlastEngine) {
+        this.toyBlastEngine = new ToyBlastEngine(this.currentUser.username);
+      } else {
+        this.toyBlastEngine.username = this.currentUser.username;
+        this.toyBlastEngine.loadPlayerProgress();
+      }
+      this.toyBlastUI = new ToyBlastUI(this.toyBlastEngine, this.gameContainer, {
+        currentUser: this.currentUser,
+        onUserLogout: () => this.handleLogout(),
+        onUserSwitch: () => this.handleSwitchUser()
+      });
+    } else if (game === GAMES.MATCHINGTON) {
+      if (!this.matchingtonEngine) {
+        this.matchingtonEngine = new MatchingtonEngine(this.currentUser.username);
+      } else {
+        this.matchingtonEngine.username = this.currentUser.username;
+        this.matchingtonEngine.loadPlayerData();
+      }
+      this.matchingtonUI = new MatchingtonUI(this.matchingtonEngine, this.gameContainer, {
+        currentUser: this.currentUser,
+        onUserLogout: () => this.handleLogout(),
+        onUserSwitch: () => this.handleSwitchUser()
+      });
     }
   }
+
 
   handleLogout() {
     Auth.logout();

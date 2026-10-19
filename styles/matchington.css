@@ -1,0 +1,591 @@
+/**
+ * Matchington Mansion Stylesheet
+ * Match-3 puzzle board, booster animations, and interactive room renovation scenes.
+ */
+
+.matchington-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  gap: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --- Mode Switcher Bar --- */
+.mm-mode-bar {
+  display: flex;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 4px;
+}
+
+.mm-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 42px;
+  transition: all 0.2s ease;
+}
+
+.mm-mode-btn.active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.mm-star-pill {
+  background: rgba(250, 204, 21, 0.25);
+  border: 1px solid #facc15;
+  color: #fef08a;
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- Content Wrapper --- */
+.mm-content-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+
+/* --- Puzzle HUD --- */
+.mm-hud {
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.mm-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mm-level-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 4px 10px;
+  min-width: 50px;
+}
+
+.mm-level-badge .lvl-lbl { font-size: 0.65rem; color: #94a3b8; font-weight: 700; }
+.mm-level-badge .lvl-num { font-size: 1.15rem; font-weight: 900; color: #f8fafc; line-height: 1.1; }
+
+.mm-goals-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mm-goal-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 4px 8px;
+  color: #f1f5f9;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.mm-goal-chip.done {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+.mm-moves-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  border-radius: 12px;
+  padding: 4px 10px;
+  min-width: 54px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+}
+
+.mm-moves-badge.moves-low {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  animation: movesPulse 1.2s infinite alternate ease-in-out;
+}
+
+.mm-moves-badge .moves-num { font-size: 1.25rem; font-weight: 900; color: #ffffff; line-height: 1; }
+.mm-moves-badge .moves-lbl { font-size: 0.6rem; font-weight: 800; color: rgba(255, 255, 255, 0.8); }
+
+.mm-score-strip {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.mm-score-strip .score-val { color: #facc15; font-weight: 800; }
+
+/* --- 8x8 Board --- */
+.mm-board-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 4px 0;
+}
+
+.mm-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--mm-cols, 8), 1fr);
+  grid-template-rows: repeat(var(--mm-rows, 8), 1fr);
+  gap: 5px;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1 / 1;
+  background: rgba(15, 23, 42, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 8px;
+  box-shadow: inset 0 4px 16px rgba(0, 0, 0, 0.5), 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.mm-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  touch-action: none;
+}
+
+.mm-cell.selected {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px #38bdf8, 0 8px 16px rgba(56, 189, 248, 0.5);
+  z-index: 5;
+}
+
+.mm-cell.has-ice {
+  background: linear-gradient(135deg, rgba(186, 230, 253, 0.3), rgba(56, 189, 248, 0.2));
+  border: 1px solid #7dd3fc;
+  box-shadow: inset 0 0 10px rgba(125, 211, 252, 0.4);
+}
+
+.mm-cell.shake {
+  animation: shakeCell 0.3s ease-in-out;
+}
+
+/* Item Colors */
+.mm-cell.item-pillow { color: #38bdf8; }
+.mm-cell.item-teacup { color: #4ade80; }
+.mm-cell.item-lamp { color: #fbbf24; }
+.mm-cell.item-book { color: #c084fc; }
+.mm-cell.item-gem { color: #f43f5e; }
+.mm-cell.item-plant { color: #34d399; }
+
+/* Boosters */
+.mm-booster {
+  animation: boosterPulse 1.8s infinite alternate ease-in-out;
+}
+
+.mm-booster.rocket-h, .mm-booster.rocket-v {
+  background: linear-gradient(135deg, #f97316, #c2410c);
+  color: #fff;
+  border-color: #fdba74;
+}
+
+.mm-booster.paper-plane {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #fff;
+  border-color: #38bdf8;
+}
+
+.mm-booster.bomb {
+  background: linear-gradient(135deg, #475569, #0f172a);
+  color: #f87171;
+  border-color: #ef4444;
+}
+
+.mm-booster.rainbow {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6, #06b6d4);
+  color: #fff;
+  border-color: #f472b6;
+}
+
+.mm-obstacle.wood {
+  background: linear-gradient(135deg, #92400e, #451a03);
+  color: #d97706;
+  border: 2px solid #b45309;
+}
+
+/* Footer Controls */
+.mm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.mm-ctrl-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 8px 14px;
+  color: #f1f5f9;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+/* --- Mansion Renovation View --- */
+.mansion-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.room-nav-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.room-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px 12px;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.room-tab-btn.active {
+  background: linear-gradient(135deg, #ec4899, #be185d);
+  color: #fff;
+  border-color: #f472b6;
+}
+
+.room-scene {
+  flex: 1;
+  position: relative;
+  background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 100%);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.6);
+  min-height: 280px;
+}
+
+.room-scene.room-foyer {
+  background: radial-gradient(circle at 50% 30%, #312e81, #0f172a 80%);
+}
+
+.room-scene.room-conservatory {
+  background: radial-gradient(circle at 50% 30%, #064e3b, #0f172a 80%);
+}
+
+.room-header-overlay h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #f8fafc;
+  margin: 0 0 2px;
+}
+
+.room-header-overlay p {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.room-hotspots {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  overflow-y: auto;
+}
+
+.furniture-spot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.furniture-spot:hover {
+  border-color: #facc15;
+  transform: translateX(4px);
+}
+
+.spot-pin {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+}
+
+.spot-pin.can-build {
+  background: linear-gradient(135deg, #facc15, #eab308);
+  color: #451a03;
+  animation: pinBounce 1.5s infinite ease-in-out;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+}
+
+@keyframes pinBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.spot-pin.is-done {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.spot-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.spot-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.spot-choice {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.mansion-footer-cta {
+  display: flex;
+  justify-content: center;
+}
+
+.mansion-play-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+/* Modals */
+.mm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.mm-modal-card {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 400px;
+  padding: 24px 20px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mm-modal-header h2 { font-size: 1.35rem; font-weight: 900; color: #f8fafc; margin: 0 0 4px; }
+.mm-modal-header p { font-size: 0.85rem; color: #94a3b8; margin: 0; }
+
+.reno-choices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.reno-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px;
+  text-align: left;
+}
+
+.reno-choice-card.selected {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.15);
+}
+
+.choice-swatch {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.choice-details {
+  flex: 1;
+}
+
+.choice-details strong { display: block; font-size: 0.88rem; color: #f8fafc; }
+.choice-details p { font-size: 0.75rem; color: #94a3b8; margin: 2px 0 0; }
+
+.choice-select-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 34px;
+}
+
+.reno-choice-card.selected .choice-select-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.reno-stars-status {
+  font-size: 0.9rem;
+  color: #fde047;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.mm-vic-trophy { color: #facc15; margin-bottom: 8px; }
+
+.mm-vic-rewards {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.reward-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.reward-pill.star { color: #fde047; }
+.reward-pill.coins { color: #34d399; }
+
+.mm-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mm-modal-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  min-height: 48px;
+}
+
+.mm-modal-btn.primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+}
+
+.mm-modal-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
