@@ -48,14 +48,18 @@ export class MatchingtonUI {
         <div class="mm-mode-bar">
           <button type="button" class="mm-mode-btn ${this.activeMode === 'puzzle' ? 'active' : ''}" id="mmModePuzzle">
             <span class="mm-mode-icon">${Icons.tiles('mode-svg', 18)}</span>
-            <span>Match-3 Puzzle</span>
+            <span>Puzzle</span>
           </button>
           <button type="button" class="mm-mode-btn ${this.activeMode === 'mansion' ? 'active' : ''}" id="mmModeMansion">
             <span class="mm-mode-icon">${Icons.sofa('mode-svg', 18)}</span>
-            <span>Renovate Mansion</span>
+            <span>Mansion</span>
             <span class="mm-star-pill" id="mmStarBadge">
               ${Icons.key('star-svg', 14)} ${this.engine.starsAvailable}
             </span>
+          </button>
+          <button type="button" class="mm-mode-btn mm-menu-trigger" data-action="open-arcade-menu" title="Menu & Switch Game">
+            <span class="mm-mode-icon">${Icons.settings('mode-svg', 18)}</span>
+            <span>Menu</span>
           </button>
         </div>
 
@@ -101,7 +105,6 @@ export class MatchingtonUI {
         </div>
       </header>
 
-      <div class="play-cue"><strong>${this.engine.currentLevel.name}</strong><span>Swap neighbors to match 3. Tap a booster to use it.</span></div>
       <!-- 8x8 Tile Grid Board -->
       <main class="mm-board-container">
         <div class="mm-grid" id="mmGrid" style="--mm-rows: ${this.engine.currentLevel.rows}; --mm-cols: ${this.engine.currentLevel.cols};">

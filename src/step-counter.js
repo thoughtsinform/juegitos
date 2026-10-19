@@ -17,6 +17,9 @@ export class StepCounter {
     this.sensorActive = false;
     this.permissionState = 'unknown'; // 'unknown' | 'granted' | 'denied' | 'unsupported'
 
+    // Off by default unless explicitly enabled in the menu
+    this.enabled = this.loadEnabledPref();
+
     // Pedometer DSP state
     this.lastStepTime = 0;
     this.stepCooldownMs = 330; // Max ~3 steps/sec (prevents shake spam)
@@ -27,7 +30,57 @@ export class StepCounter {
     this.handleMotion = this.handleMotion.bind(this);
     this.loadState();
     this.render();
-    this.autoStartMotionIfPossible();
+    this.applyVisibility();
+    if (this.enabled) {
+      this.autoStartMotionIfPossible();
+    }
+  }
+
+  getEnabledPrefKey() {
+    return 'jueguitos_steps_enabled';
+  }
+
+  loadEnabledPref() {
+    try {
+      return localStorage.getItem(this.getEnabledPrefKey()) === 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  isEnabled() {
+    return !!this.enabled;
+  }
+
+  setEnabled(enabled) {
+    this.enabled = !!enabled;
+    try {
+      localStorage.setItem(this.getEnabledPrefKey(), this.enabled ? 'true' : 'false');
+    } catch (e) {}
+    this.applyVisibility();
+    if (this.enabled) {
+      this.requestAndStart();
+    } else {
+      this.stopMotionListener();
+    }
+    return this.enabled;
+  }
+
+  toggleEnabled() {
+    return this.setEnabled(!this.enabled);
+  }
+
+  applyVisibility() {
+    if (!this.container) return;
+    this.container.hidden = !this.enabled;
+    this.container.style.display = this.enabled ? '' : 'none';
+  }
+
+  stopMotionListener() {
+    if (!this.sensorActive || typeof window === 'undefined') return;
+    window.removeEventListener('devicemotion', this.handleMotion);
+    this.sensorActive = false;
+    this.updateUI();
   }
 
   getTodayKey() {
@@ -91,11 +144,12 @@ export class StepCounter {
   setUser(username) {
     this.user = username;
     this.loadState();
+    this.applyVisibility();
     this.updateUI();
   }
 
   autoStartMotionIfPossible() {
-    if (typeof window === 'undefined') return;
+    if (!this.enabled || typeof window === 'undefined') return;
 
     if (!('DeviceMotionEvent' in window)) {
       this.permissionState = 'unsupported';

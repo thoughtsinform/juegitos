@@ -80,10 +80,11 @@ export class WowUI {
     if (!this.container) return;
 
     const lvl = this.engine.currentLevel;
-    const landmarkSvg = WONDER_LANDMARKS[lvl.id] || WONDER_LANDMARKS[1];
+    const wonderThemeIdx = ((lvl.id - 1) % 8) + 1;
+    const landmarkSvg = WONDER_LANDMARKS[wonderThemeIdx] || WONDER_LANDMARKS[1];
 
     this.container.innerHTML = `
-      <div class="wow-game-wrapper" id="wowWrapper" data-wonder-id="${lvl.id}">
+      <div class="wow-game-wrapper" id="wowWrapper" data-wonder-id="${wonderThemeIdx}">
         <!-- Atmospheric Sky & Custom Wonder Landmark Backdrop -->
         <div class="wow-backdrop-stars"></div>
         <div class="wow-backdrop-mountains">${landmarkSvg}</div>
@@ -113,6 +114,11 @@ export class WowUI {
               <span class="stat-icon">${Icons.coin('coin-svg', 15)}</span>
               <span id="wowCoinsVal">${this.engine.coins}</span>
             </div>
+
+            <button type="button" class="wow-menu-pill-btn" data-action="open-arcade-menu" title="Menu & Switch Game">
+              ${Icons.settings('menu-svg', 15)}
+              <span>Menu</span>
+            </button>
           </div>
         </header>
 
@@ -170,10 +176,9 @@ export class WowUI {
           </div>
         </section>
 
-        <div class="wow-play-cue">Trace a word, then lift your finger. No timer. Take your time.</div>
         <!-- 4. Bottom Collapsible Settings Drawer -->
         <div class="bottom-drawer-wrapper ${this.drawerOpen ? 'is-open' : ''}" id="wowBottomDrawer">
-          <button class="drawer-chevron-btn" id="wowDrawerToggleBtn" aria-label="Toggle Game Menu" title="Controls & Player Menu">
+          <button class="drawer-chevron-btn" id="wowDrawerToggleBtn" aria-label="Toggle Game Controls" title="Controls & Player Menu">
             ${Icons.chevronUp('drawer-chevron-svg', 18)}
           </button>
 
@@ -204,7 +209,7 @@ export class WowUI {
               </div>
               <div class="drawer-footer-actions">
                 <button class="drawer-link-btn" id="wowDrawerFreeCoinsBtn">+100 Coins</button>
-                <button class="drawer-link-btn" id="wowDrawerSwitchUserBtn">Switch Player</button>
+                <button class="drawer-link-btn" data-action="open-arcade-menu">Menu / Switch Game</button>
               </div>
             </div>
           </div>

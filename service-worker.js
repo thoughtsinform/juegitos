@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jueguitos-v6-second-pass';
+const CACHE_NAME = 'jueguitos-v7-menu-24wonders';
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",

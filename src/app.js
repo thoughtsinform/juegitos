@@ -1,6 +1,6 @@
 /**
  * Main Application Controller for Jueguitos Arcade
- * Connects Auth, Step Counter, Arcade Navigation, Theme Manager,
+ * Connects Auth, Step Counter (off by default), Unified Arcade Menu, Theme Manager,
  * Spider Solitaire, Words of Wonders, Toy Blast, and Matchington Mansion.
  */
 
@@ -42,12 +42,29 @@ class App {
     this.loginModal = document.getElementById('loginModal');
 
     window.addEventListener('pagehide', () => this.saveGames());
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this.saveGames(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.saveGames();
+    });
+
+    // Global delegate for any in-game Menu button ([data-action="open-arcade-menu"])
+    document.addEventListener('click', (e) => {
+      const menuTrigger = e.target.closest('[data-action="open-arcade-menu"]');
+      if (menuTrigger && this.arcadeNav) {
+        e.preventDefault();
+        this.openArcadeMenu();
+      }
+    });
+
     this.init();
   }
 
   init() {
     this.checkSession();
+  }
+
+  openArcadeMenu() {
+    this.saveGames();
+    this.arcadeNav?.openMenu();
   }
 
   checkSession() {
@@ -123,7 +140,9 @@ class App {
         sound.playStepGoalMet();
         this.hideLogin();
         this.launchArcade();
-        this.stepCounter?.requestAndStart();
+        if (this.stepCounter?.isEnabled()) {
+          this.stepCounter.requestAndStart();
+        }
       } else {
         if (errorEl) errorEl.textContent = res.error;
       }
@@ -141,7 +160,7 @@ class App {
   }
 
   launchArcade() {
-    // 1. Initialize Step Counter (persists across all games)
+    // 1. Initialize Step Counter (off by default unless toggled on in Menu)
     if (!this.stepCounter) {
       this.stepCounter = new StepCounter({
         user: this.currentUser.username,
@@ -151,15 +170,18 @@ class App {
       this.stepCounter.setUser(this.currentUser.username);
     }
 
-    // 2. Initialize Arcade Navigation Bar
+    // 2. Initialize Unified Arcade Menu
     if (!this.arcadeNav) {
       this.arcadeNav = new ArcadeNav({
         container: this.arcadeNavContainer,
+        stepCounter: this.stepCounter,
+        currentUser: this.currentUser,
+        onSaveGames: () => this.saveGames(),
         onSwitchPlayer: () => this.handleSwitchUser(),
         onSwitchGame: (game) => this.switchGame(game)
       });
     } else {
-      this.arcadeNav.render();
+      this.arcadeNav.setUser(this.currentUser);
     }
 
     // 3. Launch active game
@@ -173,6 +195,9 @@ class App {
   switchGame(game) {
     if (!this.gameContainer) return;
 
+    // Auto-save before switching
+    this.saveGames();
+
     // Cleanly tear down previous game UI to prevent timer and window listener leaks
     if (this.activeUI && typeof this.activeUI.destroy === 'function') {
       this.activeUI.destroy();
@@ -184,47 +209,38 @@ class App {
     this.arcadeNav?.updateUI();
     sound.playCardSlide();
 
+    const uiOptions = {
+      currentUser: this.currentUser,
+      onOpenMenu: () => this.openArcadeMenu(),
+      onUserLogout: () => this.handleLogout(),
+      onUserSwitch: () => this.handleSwitchUser()
+    };
+
     if (game === GAMES.SPIDER) {
       if (!this.spiderEngine) {
         this.spiderEngine = new SpiderEngine(2);
         this.spiderEngine.startNewGame(2);
         attachSession(this.spiderEngine, this.currentUser.username, 'spider');
       }
-      this.spiderUI = new SpiderUI(this.spiderEngine, this.gameContainer, {
-        currentUser: this.currentUser,
-        onUserLogout: () => this.handleLogout(),
-        onUserSwitch: () => this.handleSwitchUser()
-      });
+      this.spiderUI = new SpiderUI(this.spiderEngine, this.gameContainer, uiOptions);
       this.activeUI = this.spiderUI;
     } else if (game === GAMES.WOW) {
       if (!this.wowEngine) {
         this.wowEngine = attachSession(new WowEngine(this.currentUser.username), this.currentUser.username, 'wow');
       }
-      this.wowUI = new WowUI(this.wowEngine, this.gameContainer, {
-        currentUser: this.currentUser,
-        onUserLogout: () => this.handleLogout(),
-        onUserSwitch: () => this.handleSwitchUser()
-      });
+      this.wowUI = new WowUI(this.wowEngine, this.gameContainer, uiOptions);
       this.activeUI = this.wowUI;
     } else if (game === GAMES.TOYBLAST) {
       if (!this.toyBlastEngine) {
         this.toyBlastEngine = attachSession(new ToyBlastEngine(this.currentUser.username), this.currentUser.username, 'toyblast');
       }
-      this.toyBlastUI = new ToyBlastUI(this.toyBlastEngine, this.gameContainer, {
-        currentUser: this.currentUser,
-        onUserLogout: () => this.handleLogout(),
-        onUserSwitch: () => this.handleSwitchUser()
-      });
+      this.toyBlastUI = new ToyBlastUI(this.toyBlastEngine, this.gameContainer, uiOptions);
       this.activeUI = this.toyBlastUI;
     } else if (game === GAMES.MATCHINGTON) {
       if (!this.matchingtonEngine) {
         this.matchingtonEngine = attachSession(new MatchingtonEngine(this.currentUser.username), this.currentUser.username, 'matchington');
       }
-      this.matchingtonUI = new MatchingtonUI(this.matchingtonEngine, this.gameContainer, {
-        currentUser: this.currentUser,
-        onUserLogout: () => this.handleLogout(),
-        onUserSwitch: () => this.handleSwitchUser()
-      });
+      this.matchingtonUI = new MatchingtonUI(this.matchingtonEngine, this.gameContainer, uiOptions);
       this.activeUI = this.matchingtonUI;
     }
   }
@@ -251,5 +267,7 @@ class App {
 
 window.addEventListener('DOMContentLoaded', () => {
   new App();
-  if ('serviceWorker' in navigator && location.hostname !== 'localhost') navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  }
 });

@@ -63,7 +63,7 @@ export class SpiderUI {
   renderLayout() {
     this.container.innerHTML = `
       <div class="spider-game-wrapper ${this.drawerOpen ? 'drawer-open' : ''}" id="spiderWrapper">
-        <!-- 1. Top HUD Bar: MOVES | TIME | SCORE -->
+        <!-- 1. Top HUD Bar: MOVES | TIME | SCORE | MENU -->
         <div class="spider-hud">
           <div class="hud-item">
             <span class="hud-label">MOVES</span>
@@ -77,6 +77,10 @@ export class SpiderUI {
             <span class="hud-label">SCORE</span>
             <span class="hud-val" id="hudScore">500</span>
           </div>
+          <button type="button" class="hud-menu-btn" data-action="open-arcade-menu" title="Open Menu & Switch Game">
+            ${Icons.settings('hud-menu-svg', 16)}
+            <span>Menu</span>
+          </button>
         </div>
 
         <!-- 2. Upper Board: Foundation (Left), Auto-Complete CTA (Center), Stock Pile (Right) -->
@@ -86,8 +90,6 @@ export class SpiderUI {
           <div class="stock-area" id="stockArea" title="Tap to deal 10 cards (1 per column)"></div>
         </div>
 
-        <div class="spider-tip">Build down from King to Ace. Move a run of the same suit together.</div>
-        <div class="spider-quick-controls"><button type="button" id="spiderQuickUndo">Undo</button><button type="button" id="spiderQuickHint">Hint</button><button type="button" id="spiderQuickDeal">Deal 10</button></div>
         <!-- 3. Main 10-Column Tableau -->
         <div class="spider-tableau" id="tableauArea">
           ${Array.from({ length: 10 }, (_, idx) => `
@@ -97,7 +99,7 @@ export class SpiderUI {
 
         <!-- 4. Bottom Collapsible Control Drawer -->
         <div class="bottom-drawer-wrapper ${this.drawerOpen ? 'is-open' : ''}" id="bottomDrawer">
-          <button class="drawer-chevron-btn" id="drawerToggleBtn" aria-label="Toggle Game Menu" title="Controls & Settings">
+          <button class="drawer-chevron-btn" id="drawerToggleBtn" aria-label="Toggle Game Controls" title="Controls & Settings">
             ${Icons.chevronUp('drawer-chevron-svg', 18)}
           </button>
 
@@ -143,7 +145,7 @@ export class SpiderUI {
               </div>
               <div class="drawer-footer-actions">
                 <button class="drawer-link-btn" id="drawerRestartBtn" title="Replay this exact deal from move 0">Replay Hand</button>
-                <button class="drawer-link-btn" id="drawerSwitchUserBtn">Switch Player</button>
+                <button class="drawer-link-btn" data-action="open-arcade-menu">Menu / Switch Game</button>
               </div>
             </div>
           </div>

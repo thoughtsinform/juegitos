@@ -77,7 +77,6 @@ export class ToyBlastUI {
           </div>
         </header>
 
-        <div class="play-cue" id="tbPlayCue"><strong>${this.engine.currentLevel.name}</strong><span>Tap 2+ touching blocks of one color. Collect the goals above.</span></div>
         <!-- Main Toy Grid Board -->
         <main class="toyblast-board-wrap">
           <div class="toyblast-grid" id="tbGrid" style="--grid-rows: ${this.engine.currentLevel.rows}; --grid-cols: ${this.engine.currentLevel.cols};">
@@ -99,6 +98,10 @@ export class ToyBlastUI {
           <button type="button" class="tb-ctrl-btn" id="tbRestartBtn" title="Restart Level">
             <span class="tb-btn-icon">${Icons.restart('tb-icon', 18)}</span>
             <span>Retry</span>
+          </button>
+          <button type="button" class="tb-ctrl-btn" data-action="open-arcade-menu" title="Menu & Switch Game">
+            <span class="tb-btn-icon">${Icons.settings('tb-icon', 18)}</span>
+            <span>Menu</span>
           </button>
         </footer>
 
