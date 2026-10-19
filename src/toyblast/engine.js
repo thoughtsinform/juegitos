@@ -4,6 +4,8 @@
  * deterministic rotor orientation, deadlock auto-shuffling, gravity, and level objectives.
  */
 
+import { recordMotion } from '../board-motion.js';
+import { seededRandom } from '../play-session.js';
 import { TOY_BLAST_LEVELS } from './levels.js';
 
 export const CELL_TYPES = {
@@ -20,6 +22,7 @@ export const CELL_TYPES = {
 export class ToyBlastEngine {
   constructor(username = 'Ellen') {
     this.username = username;
+    recordMotion(this);
     this.levelIndex = 0;
     this.score = 0;
     this.movesLeft = 0;
@@ -76,6 +79,7 @@ export class ToyBlastEngine {
   initLevel(levelIdx = 0) {
     this.levelIndex = Math.max(0, Math.min(levelIdx, TOY_BLAST_LEVELS.length - 1));
     const lvl = this.currentLevel;
+    this.randomState = (11093 + this.levelIndex * 2654435761) >>> 0;
 
     this.score = 0;
     this.movesLeft = lvl.moves;
@@ -126,7 +130,7 @@ export class ToyBlastEngine {
   }
 
   createRandomCube(colors) {
-    const color = colors[Math.floor(Math.random() * colors.length)];
+    const color = colors[Math.floor(seededRandom(this) * colors.length)];
     return {
       type: CELL_TYPES.CUBE,
       color,
@@ -187,7 +191,7 @@ export class ToyBlastEngine {
     for (let attempt = 0; attempt < 10; attempt++) {
       for (const pos of cubeCoords) {
         this.grid[pos.r][pos.c].color = this.currentLevel.colors[
-          Math.floor(Math.random() * this.currentLevel.colors.length)
+          Math.floor(seededRandom(this) * this.currentLevel.colors.length)
         ];
       }
       if (this.hasValidMove()) return true;
@@ -222,6 +226,8 @@ export class ToyBlastEngine {
     if (!cell || cell.type === CELL_TYPES.EMPTY || cell.type === CELL_TYPES.CRATE || cell.type === CELL_TYPES.DUCK) {
       return { status: 'invalid_cell' };
     }
+
+    this.captureFrame('start');
 
     // Case 1: Tapping a booster or booster combo
     if (this.isBooster(cell)) {
@@ -283,6 +289,7 @@ export class ToyBlastEngine {
       const poppedBubbles = [];
       const damagedCrates = [];
 
+      this.captureFrame('clear', group);
       for (const pos of group) {
         const item = this.grid[pos.r][pos.c];
         if (item.color && this.goals.cubes && this.goals.cubes[item.color] > 0) {
@@ -598,6 +605,7 @@ export class ToyBlastEngine {
    * Processes cleared cells with full recursive chain-detonation when a blast wave hits another booster!
    */
   processClearedCells(positions) {
+    this.captureFrame('clear', positions);
     const queue = [...positions];
     const visited = new Set();
     const clearedList = [];
@@ -668,6 +676,7 @@ export class ToyBlastEngine {
         writeRow--;
       }
     }
+    this.captureFrame('fall');
   }
 
   checkDucksAtBottom() {
@@ -699,6 +708,7 @@ export class ToyBlastEngine {
   }
 
   checkLevelOutcome() {
+    if (this.isWon || this.isLost) return;
     if (this.checkGoalsSatisfied()) {
       this.isWon = true;
 

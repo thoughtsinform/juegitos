@@ -4,6 +4,7 @@
  * Spider Solitaire, Words of Wonders, Toy Blast, and Matchington Mansion.
  */
 
+import { attachSession } from './play-session.js';
 import { Auth } from './auth.js';
 import { StepCounter } from './step-counter.js';
 import { SpiderEngine } from './spider/engine.js';
@@ -40,6 +41,8 @@ class App {
     this.gameContainer = document.getElementById('gameContainer');
     this.loginModal = document.getElementById('loginModal');
 
+    window.addEventListener('pagehide', () => this.saveGames());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.saveGames(); });
     this.init();
   }
 
@@ -100,7 +103,7 @@ class App {
     quickSelect?.querySelectorAll('.player-select-btn').forEach(btn => {
       btn.onclick = () => {
         const userId = btn.dataset.user;
-        selectPlayer(userId);
+        selectPlayer(userId, true);
       };
       btn.ondblclick = () => {
         const userId = btn.dataset.user;
@@ -152,6 +155,7 @@ class App {
     if (!this.arcadeNav) {
       this.arcadeNav = new ArcadeNav({
         container: this.arcadeNavContainer,
+        onSwitchPlayer: () => this.handleSwitchUser(),
         onSwitchGame: (game) => this.switchGame(game)
       });
     } else {
@@ -159,6 +163,10 @@ class App {
     }
 
     // 3. Launch active game
+    if (this.engineUser !== this.currentUser.username) {
+      this.spiderEngine = this.wowEngine = this.toyBlastEngine = this.matchingtonEngine = null;
+      this.engineUser = this.currentUser.username;
+    }
     this.switchGame(this.arcadeNav.activeGame);
   }
 
@@ -180,6 +188,7 @@ class App {
       if (!this.spiderEngine) {
         this.spiderEngine = new SpiderEngine(2);
         this.spiderEngine.startNewGame(2);
+        attachSession(this.spiderEngine, this.currentUser.username, 'spider');
       }
       this.spiderUI = new SpiderUI(this.spiderEngine, this.gameContainer, {
         currentUser: this.currentUser,
@@ -189,9 +198,7 @@ class App {
       this.activeUI = this.spiderUI;
     } else if (game === GAMES.WOW) {
       if (!this.wowEngine) {
-        this.wowEngine = new WowEngine(this.currentUser.username);
-      } else {
-        this.wowEngine.setUser(this.currentUser.username);
+        this.wowEngine = attachSession(new WowEngine(this.currentUser.username), this.currentUser.username, 'wow');
       }
       this.wowUI = new WowUI(this.wowEngine, this.gameContainer, {
         currentUser: this.currentUser,
@@ -201,10 +208,7 @@ class App {
       this.activeUI = this.wowUI;
     } else if (game === GAMES.TOYBLAST) {
       if (!this.toyBlastEngine) {
-        this.toyBlastEngine = new ToyBlastEngine(this.currentUser.username);
-      } else {
-        this.toyBlastEngine.username = this.currentUser.username;
-        this.toyBlastEngine.loadPlayerProgress();
+        this.toyBlastEngine = attachSession(new ToyBlastEngine(this.currentUser.username), this.currentUser.username, 'toyblast');
       }
       this.toyBlastUI = new ToyBlastUI(this.toyBlastEngine, this.gameContainer, {
         currentUser: this.currentUser,
@@ -214,10 +218,7 @@ class App {
       this.activeUI = this.toyBlastUI;
     } else if (game === GAMES.MATCHINGTON) {
       if (!this.matchingtonEngine) {
-        this.matchingtonEngine = new MatchingtonEngine(this.currentUser.username);
-      } else {
-        this.matchingtonEngine.username = this.currentUser.username;
-        this.matchingtonEngine.loadPlayerData();
+        this.matchingtonEngine = attachSession(new MatchingtonEngine(this.currentUser.username), this.currentUser.username, 'matchington');
       }
       this.matchingtonUI = new MatchingtonUI(this.matchingtonEngine, this.gameContainer, {
         currentUser: this.currentUser,
@@ -228,7 +229,12 @@ class App {
     }
   }
 
+  saveGames() {
+    [this.spiderEngine, this.wowEngine, this.toyBlastEngine, this.matchingtonEngine].forEach(engine => engine?.saveSession?.());
+  }
+
   handleLogout() {
+    this.saveGames();
     if (this.activeUI && typeof this.activeUI.destroy === 'function') {
       this.activeUI.destroy();
       this.activeUI = null;
@@ -245,4 +251,5 @@ class App {
 
 window.addEventListener('DOMContentLoaded', () => {
   new App();
+  if ('serviceWorker' in navigator && location.hostname !== 'localhost') navigator.serviceWorker.register('./service-worker.js').catch(() => {});
 });

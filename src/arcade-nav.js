@@ -22,6 +22,7 @@ export class ArcadeNav {
     this.onSwitchGame = options.onSwitchGame || (() => {});
     this.onThemeChange = options.onThemeChange || (() => {});
     this.container = options.container;
+    this.onSwitchPlayer = options.onSwitchPlayer || (() => {});
     themeManager.applyToDOM(this.activeGame);
     this.render();
   }
@@ -43,6 +44,9 @@ export class ArcadeNav {
     } catch (e) {}
     themeManager.applyToDOM(this.activeGame);
     this.updateUI();
+    const settings = this.container.querySelector('#arcadeSettings');
+    if (settings) settings.hidden = true;
+    this.container.querySelector('#arcadeMenuToggle')?.setAttribute('aria-expanded', 'false');
     this.onSwitchGame(this.activeGame);
   }
 
@@ -70,10 +74,15 @@ export class ArcadeNav {
           <span class="tab-name">Mansion</span>
         </button>
       </nav>
+      <button type="button" class="arcade-menu-toggle" id="arcadeMenuToggle" aria-expanded="false" aria-controls="arcadeSettings">Menu</button>
+      <div class="arcade-settings" id="arcadeSettings" hidden>
+      <button type="button" class="arcade-sound-btn" id="arcadeSoundBtn" aria-label="${sound.muted ? 'Turn sound on' : 'Turn sound off'}" aria-pressed="${!sound.muted}">${sound.muted ? 'Sound off' : 'Sound on'}</button>
+      <button type="button" class="arcade-player-btn" id="arcadePlayerBtn" aria-label="Switch player">Player</button>
       <button type="button" class="arcade-theme-btn" id="arcadeThemeCycleBtn" title="Switch Theme (${currentTheme.name})" aria-label="Switch Theme">
         <span class="theme-dot" style="background: ${currentTheme.badgeColor};"></span>
         ${Icons.palette('theme-icon-svg', 16)}
       </button>
+      </div>
     `;
 
     this.container.querySelectorAll('.arcade-tab-btn').forEach(btn => {
@@ -85,6 +94,20 @@ export class ArcadeNav {
       });
     });
 
+    this.container.querySelector('#arcadeMenuToggle')?.addEventListener('click', e => {
+      const settings = this.container.querySelector('#arcadeSettings');
+      settings.hidden = !settings.hidden;
+      e.currentTarget.setAttribute('aria-expanded', String(!settings.hidden));
+    });
+    this.container.querySelector('#arcadePlayerBtn')?.addEventListener('click', this.onSwitchPlayer);
+    this.container.querySelector('#arcadeSoundBtn')?.addEventListener('click', e => {
+      sound.muted = !sound.muted;
+      try { localStorage.setItem('jueguitos_sound', sound.muted ? 'off' : 'on'); } catch (err) {}
+      e.currentTarget.textContent = sound.muted ? 'Sound off' : 'Sound on';
+      e.currentTarget.setAttribute('aria-pressed', String(!sound.muted));
+      e.currentTarget.setAttribute('aria-label', sound.muted ? 'Turn sound on' : 'Turn sound off');
+      if (!sound.muted) { sound.initAudio(); sound.playPop(); }
+    });
     this.container.querySelector('#arcadeThemeCycleBtn')?.addEventListener('click', () => {
       sound.playPop(1.15);
       const nextTheme = themeManager.cycleTheme(this.activeGame);
@@ -98,6 +121,7 @@ export class ArcadeNav {
     this.container?.querySelectorAll('.arcade-tab-btn').forEach(btn => {
       const isCurrent = btn.dataset.game === this.activeGame;
       btn.classList.toggle('active', isCurrent);
+      btn.setAttribute('aria-current', isCurrent ? 'page' : 'false');
     });
     const currentTheme = themeManager.getThemeForGame(this.activeGame);
     const themeBtn = this.container?.querySelector('#arcadeThemeCycleBtn');

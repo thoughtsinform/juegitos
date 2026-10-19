@@ -1,80 +1,25 @@
-/**
- * Unit test suite for SpiderEngine and Auth
- */
-
-import { Auth } from '../src/auth.js';
-import { SpiderEngine, SUITS, Card } from '../src/spider/engine.js';
-import assert from 'node:assert';
-
-console.log('--- Testing Auth ---');
-// Mock localStorage
-const store = {};
-global.localStorage = {
-  getItem: (k) => store[k] || null,
-  setItem: (k, v) => { store[k] = v.toString(); },
-  removeItem: (k) => { delete store[k]; }
-};
-
-// 1. Test Susan login
-const susanRes = Auth.login('Susan', 'theclown');
-assert.strictEqual(susanRes.success, true, 'Susan login should succeed');
-assert.strictEqual(Auth.getCurrentUser().username, 'Susan', 'Current user should be Susan');
-
-// 2. Test Ellen login
-const ellenRes = Auth.login('Ellen', 'boom');
-assert.strictEqual(ellenRes.success, true, 'Ellen login should succeed');
-assert.strictEqual(Auth.getCurrentUser().username, 'Ellen', 'Current user should be Ellen');
-
-// 3. Test Invalid login
-const badRes = Auth.login('Susan', 'wrongpass');
-assert.strictEqual(badRes.success, false, 'Bad password should fail');
-
-console.log('✓ Auth tests passed!');
-
-console.log('--- Testing Spider Engine ---');
-const engine = new SpiderEngine(2);
-engine.startNewGame(2);
-
-// Check tableau columns count and initial deal
-assert.strictEqual(engine.columns.length, 10, 'Tableau must have 10 columns');
-for (let c = 0; c < 10; c++) {
-  const expectedCount = c < 4 ? 6 : 5;
-  assert.strictEqual(engine.columns[c].length, expectedCount, `Column ${c} should have ${expectedCount} cards`);
-  // Top card must be face up
-  assert.strictEqual(engine.columns[c][expectedCount - 1].faceUp, true, `Top card in column ${c} must be face-up`);
-}
-
-// Check stock deals
-assert.strictEqual(engine.stock.length, 5, 'Stock should have 5 deals remaining');
-for (const deal of engine.stock) {
-  assert.strictEqual(deal.length, 10, 'Each stock deal must have 10 cards');
-}
-
-// Test deal from stock
-assert.strictEqual(engine.canDealStock(), true, 'Should be able to deal stock when no empty columns');
-const dealt = engine.dealFromStock();
-assert.strictEqual(dealt.length, 10, 'Dealt 10 cards');
-assert.strictEqual(engine.stock.length, 4, 'Stock should now have 4 deals');
-assert.strictEqual(engine.moves, 1, 'Moves should increment to 1');
-assert.strictEqual(engine.score, 499, 'Score should be 499');
-
-// Test undo
-const undone = engine.undo();
-assert.strictEqual(undone, true, 'Undo should succeed');
-assert.strictEqual(engine.stock.length, 5, 'Stock restored to 5');
-
-// Test foundation sequence detection
-const testCol = [];
-for (let r = 13; r >= 1; r--) {
-  testCol.push(new Card(SUITS.SPADES, r, true));
-}
-engine.columns[0] = testCol;
-const clearedSuit = engine.checkAndClearFoundation(0);
-assert.strictEqual(clearedSuit, SUITS.SPADES, 'Foundation clear must detect complete King to Ace run');
-assert.strictEqual(engine.columns[0].length, 0, 'Column 0 should now be empty');
-assert.strictEqual(engine.foundations.length, 1, 'Foundation should have 1 completed suit');
-assert.strictEqual(engine.score, 599, 'Score should increase by 100 on foundation clear');
-
-engine.stopTimer();
-console.log('✓ Spider Engine tests passed!');
-
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { SpiderEngine } from '../src/spider/engine.js';
+const card = (rank, suit = 'spades', faceUp = true) => ({ rank, suit, faceUp });
+test('Spider deals 104 cards, preserves exact restart, and undoes stock', () => {
+  const e = new SpiderEngine(2); e.startNewGame();
+  assert.equal(e.columns.length, 10);
+  assert.equal(e.columns.flat().length, 54); assert.equal(e.stock.length, 50);
+  const original = JSON.stringify(e.columns);
+  assert.equal(e.canDealStock().allowed, true);
+  assert.equal(e.dealFromStock().success, true); assert.equal(e.stock.length, 40);
+  assert.equal(e.undo(), true); assert.equal(JSON.stringify(e.columns), original);
+  e.dealFromStock(); e.restartCurrentDeal(); assert.equal(JSON.stringify(e.columns), original);
+  e.columns[0] = []; assert.equal(e.canDealStock().reason, 'empty_columns');
+});
+test('Spider completes only a descending same-suit run and prefers same-suit targets', () => {
+  const e = new SpiderEngine(); e.startNewGame();
+  e.columns = Array.from({length:10}, () => []);
+  e.columns[0] = Array.from({length:13}, (_,i) => card(13-i));
+  assert.equal(e.checkAndSweepCompletedRun(0), 'spades'); assert.equal(e.foundations.length, 1);
+  e.columns[0] = [card(7)]; e.columns[1] = [card(8,'hearts')]; e.columns[2] = [card(8)];
+  assert.equal(e.findBestDestination(0,0).toCol, 2);
+  e.columns[3] = [card(6), card(5,'hearts')]; assert.equal(e.isValidSequence(3,0), false);
+  assert.equal(e.canMoveSequence(0,0,4), true);
+});

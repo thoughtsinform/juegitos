@@ -1,0 +1,133 @@
+/* Shared second-pass polish. Board styles keep each game's own character. */
+button, input { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 3px solid #fff4be; outline-offset: 3px; }
+button:disabled { opacity: .5; cursor: default; }
+.arcade-sound-btn, .arcade-player-btn {
+  background: rgba(255,255,255,.09); color: #fff7dd; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 12px; padding: 8px 10px; min-height: 40px; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+#arcadeNavContainer { gap: 6px; flex-wrap: wrap; padding-block: 5px; }
+.arcade-tab-btn { min-height: 42px; }
+.login-instruction { color: #fff2cf; font-size: 17px; margin: 4px 0 18px; }
+.manual-login { margin-top: 20px; font-size: 13px; color: #c7d8ce; }
+.manual-login summary { cursor: pointer; min-height: 32px; }
+.login-card { max-height: 94dvh; overflow-y: auto; }
+.play-cue { display: flex; flex-direction: column; gap: 4px; text-align: center; flex: none; line-height: 1.35; color: #fff5d7; font-size: 13px; padding: 2px 8px; }
+.play-cue strong { font-size: 16px; letter-spacing: .01em; }
+.play-cue span { color: #eee5d3; }
+.toyblast-app, .matchington-app { gap: 8px; }
+.toyblast-board-wrap, .mm-board-container { flex: 1; min-height: 0; }
+.toyblast-grid, .mm-grid { max-height: 100%; width: min(100%, 440px); }
+.tb-ctrl-btn, .mm-ctrl-btn { min-height: 48px; }
+.toyblast-footer, .mm-footer { flex-shrink: 0; }
+.tb-cell, .mm-cell { will-change: auto; }
+.mm-cell:active, .tb-cell:active { filter: brightness(1.12); }
+.tb-goal-pill, .mm-goal-pill { min-height: 32px; }
+.wow-play-cue { position: absolute; bottom: 49px; left: 10px; right: 10px; text-align: center; color: #fff4db; font-size: 13px; pointer-events: none; }
+.wow-word-text:empty::after { content: 'Connect the letters'; font-size: 13px; letter-spacing: .03em; color: #f5dfb2; }
+.wow-letter-flight { position: fixed; z-index: 100; display: grid; place-items: center; background: #fff3ca; color: #543010; border: 2px solid #ffd47c; border-radius: 10px; font: 800 24px system-ui; pointer-events: none; box-shadow: 0 4px 14px #0005; }
+.spider-tip { color: #e3f4df; text-align: center; font-size: 12px; padding: 3px 10px; }
+.spider-quick-controls { display: flex; justify-content: center; gap: 8px; flex: none; padding: 4px 8px; }
+.spider-quick-controls button { background: #ffffff12; color: #fff8df; border: 1px solid #ffffff40; border-radius: 10px; min-height: 40px; padding: 6px 15px; font-size: 14px; }
+.solitaire-card.can-move { touch-action: none; }
+@media (max-width: 520px) {
+  #arcadeNavContainer { justify-content: center; }
+  .arcade-tab-bar { flex-basis: 100%; justify-content: center; }
+  .arcade-tab-btn { padding-inline: 10px; }
+  .arcade-theme-btn { width: 36px; height: 36px; }
+  .arcade-sound-btn, .arcade-player-btn { min-height: 32px; padding: 4px 12px; }
+  .toyblast-app, .matchington-app { padding-inline: 8px; }
+  .tb-cell svg, .mm-cell svg { max-width: 78%; max-height: 78%; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  #arcadeNavContainer { flex-wrap: nowrap; padding-block: 2px; }
+  .arcade-tab-bar { flex-basis: auto; }
+  .toyblast-app, .matchington-app { max-width: none; display: grid; grid-template-columns: minmax(180px,1fr) minmax(180px,2fr) minmax(120px,1fr); grid-template-rows: auto 1fr; align-items: center; gap: 4px 12px; }
+  .toyblast-hud, .mm-hud { grid-column: 1; grid-row: 1 / 3; }
+  .toyblast-board-wrap, .mm-board-container { grid-column: 2; grid-row: 1 / 3; height: 100%; }
+  .toyblast-grid, .mm-grid { height: 100%; width: auto; max-width: 100%; }
+  .toyblast-footer, .mm-footer { grid-column: 3; flex-direction: column; }
+  .toyblast-app .play-cue { grid-column: 3; grid-row: 1; }
+  .matchington-app .mm-mode-bar { grid-column: 3; grid-row: 1; flex-direction: column; }
+  .mm-content-wrap { display: contents; }
+  .matchington-app .play-cue { display: none; }
+  .play-cue { font-size: 11px; }
+  .spider-tip { display: none; }
+  .spider-quick-controls { position: absolute; bottom: 8px; right: 10px; z-index: 20; }
+  .wow-play-cue { bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+.toyblast-board-wrap, .mm-board-container { container-type: size; }
+.toyblast-grid, .mm-grid { width: min(100cqw, 100cqh, 440px); height: min(100cqw, 100cqh, 440px); }
+.wow-board-area { min-height: 0; container-type: size; }
+.wow-crossword-grid { --cell-size: min(48px, calc((100cqw - 56px) / 7), calc((100cqh - 48px) / 6)); gap: 4px; }
+.wow-cell { font-size: clamp(16px, 2.8vh, 26px); }
+.wow-game-wrapper[data-wonder-id="5"] { background: linear-gradient(#311f34, #88534f 60%, #d5a07a); }
+.wow-game-wrapper[data-wonder-id="6"] { background: linear-gradient(#183c49, #51847c 62%, #b7bc8e); }
+.wow-game-wrapper[data-wonder-id="7"] { background: linear-gradient(#34314d, #a36b78 60%, #deb381); }
+.wow-game-wrapper[data-wonder-id="8"] { background: linear-gradient(#203f4b, #618580 60%, #b3bea6); }
+@media (max-height: 740px) and (orientation: portrait) {
+  .play-cue strong { font-size: 14px; }
+  .play-cue span { font-size: 11px; }
+  .wow-wheel-disc { --wheel-size: 200px; }
+  .wow-play-cue { display: none; }
+  .wow-controls-area { padding-bottom: 40px; }
+}
+@media (max-width: 520px) {
+  .arcade-tab-bar { max-width: 100%; width: 100%; overflow: visible; }
+  .arcade-tab-btn { flex: 1; min-width: 0; justify-content: center; padding: 6px 4px; font-size: 12px; gap: 4px; }
+  .tab-icon-wrap { display: flex; }
+  .tb-ctrl-btn, .mm-ctrl-btn { flex: 1; min-width: 0; justify-content: center; padding: 8px 5px; font-size: 13px; gap: 4px; }
+  .toyblast-footer, .mm-footer { gap: 6px; }
+  .wow-play-cue { display: none; }
+}
+.toyblast-hud, .mm-hud, .mm-mode-bar { border-width: 1.5px; }
+.mm-grid, .toyblast-grid { border-width: 2px; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .toyblast-app, .matchington-app { grid-template-rows: minmax(0,1fr); position: relative; }
+  .toyblast-hud, .mm-hud, .toyblast-board-wrap, .mm-board-container { grid-row: 1; min-height: 0; }
+  .toyblast-footer, .mm-footer { grid-row: 1; align-self: end; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+  .tb-ctrl-btn, .mm-ctrl-btn { min-width: 0; min-height: 42px; padding: 6px; justify-content: center; }
+  .toyblast-app .play-cue, .matchington-app .mm-mode-bar { grid-row: 1; align-self: start; }
+  .matchington-app.mode-mansion { display: flex; }
+  .mode-mansion .mm-mode-bar { flex-direction: row; }
+  .mode-mansion .mm-content-wrap { display: flex; flex: 1; min-height: 0; }
+  .mode-mansion .mansion-view { overflow-y: auto; }
+}
+.mm-grid { grid-template-columns: repeat(var(--mm-cols, 8), minmax(0,1fr)); grid-template-rows: repeat(var(--mm-rows, 8), minmax(0,1fr)); }
+.toyblast-grid { grid-template-columns: repeat(var(--grid-cols, 8), minmax(0,1fr)); grid-template-rows: repeat(var(--grid-rows, 8), minmax(0,1fr)); }
+.mm-cell, .tb-cell { min-width: 0; min-height: 0; overflow: hidden; }
+.tile-icon, .booster-ico, .obs-ico { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
+.tile-icon svg, .booster-ico svg, .obs-ico svg { max-width: 78%; max-height: 78%; }
+#arcadeNavContainer { flex-wrap: nowrap; }
+.arcade-menu-toggle { flex: none; min-height: 42px; padding: 6px 10px; border: 1px solid #ffffff40; border-radius: 12px; background: #ffffff12; color: #fff5dc; font-size: 12px; font-weight: 700; }
+.arcade-settings { position: absolute; right: 10px; top: calc(100% + 6px); display: flex; align-items: center; gap: 8px; padding: 10px; background: #152b25; border: 1px solid #b5ab7c; border-radius: 16px; box-shadow: 0 8px 24px #0008; }
+.arcade-settings[hidden] { display: none; }
+@media (max-width: 520px) {
+  .arcade-tab-bar { flex-basis: auto; max-width: calc(100% - 54px); }
+  .arcade-tab-btn { font-size: 12px; }
+  .tab-icon-wrap { display: none; }
+}
+@media (max-height: 740px) and (orientation: portrait) {
+  .mm-mode-btn { min-height: 34px; padding: 4px 6px; font-size: 12px; }
+  .mm-hud, .toyblast-hud { padding: 5px 8px; gap: 4px; }
+  .play-cue strong { display: none; }
+  .play-cue { padding: 0 2px; }
+  .mm-score-strip, .toyblast-score-bar { padding: 3px 6px; }
+  .mm-goal-pill, .tb-goal-pill { padding: 3px 7px; }
+}
+.wow-crossword-grid { --cell-size: min(48px, calc((100cqw - 24px - (var(--wow-cols) - 1) * 4px) / var(--wow-cols)), calc((100cqh - 24px - (var(--wow-rows) - 1) * 4px) / var(--wow-rows))); }
+@media (max-width: 520px) {
+  .wow-hud { padding: 6px 8px; gap: 4px; }
+  .wow-level-info-btn { padding: 5px 6px; }
+  .wow-level-wonder { font-size: 13px; line-height: 1.15; gap: 4px; }
+  .wow-level-country { font-size: 9px; white-space: nowrap; }
+  .wow-hud-stats { gap: 4px; }
+  .wow-stat-pill, .wow-bonus-jar-btn { padding: 5px 7px; font-size: 12px; }
+}
+@media (max-height: 740px) and (orientation: portrait) {
+  .wow-controls-area { padding-bottom: 18px; gap: 4px; }
+}

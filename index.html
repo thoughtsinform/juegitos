@@ -2,14 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Jueguitos - Mobile Arcade</title>
   <meta name="description" content="Custom ad-free mobile arcade for Ellen & Susan with integrated walking step counter.">
   <meta name="theme-color" content="#03200c">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Jueguitos">
   
+  <link rel="icon" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/cards.css">
@@ -17,6 +19,7 @@
   <link rel="stylesheet" href="styles/wow.css">
   <link rel="stylesheet" href="styles/toyblast.css">
   <link rel="stylesheet" href="styles/matchington.css">
+  <link rel="stylesheet" href="styles/refinements.css">
 </head>
 <body>
   <div id="app">
@@ -41,7 +44,8 @@
           </svg>
         </div>
         <h1 class="login-title">Jueguitos</h1>
-        <p class="login-subtitle">Family Mobile Arcade</p>
+        <p class="login-subtitle">A little time for yourself.</p>
+        <p class="login-instruction">Tap your picture to play.</p>
 
         <!-- Quick 1-Tap Player Selector for all 6 approved players -->
         <div class="login-quick-select" id="loginQuickSelect">
@@ -71,6 +75,7 @@
           </button>
         </div>
 
+        <details class="manual-login"><summary>Sign in with a password</summary>
         <form class="login-form" onsubmit="return false;">
           <div class="login-field">
             <label for="loginUsername">Player Name</label>
@@ -86,6 +91,7 @@
 
           <button type="submit" class="login-submit-btn" id="loginSubmitBtn">Start Playing</button>
         </form>
+        </details>
       </div>
     </div>
   </div>

@@ -6,6 +6,7 @@
  *    visually transforms in the room as Ellen & Susan renovate!
  */
 
+import { playBoardTurn } from '../board-motion.js';
 import { Icons } from '../icons.js';
 import { sound } from '../sound.js';
 import { TILE_TYPES } from './engine.js';
@@ -22,11 +23,19 @@ export class MatchingtonUI {
     this.activeRoomId = 'foyer';
     this.selectedCell = null;
     this.pointerStart = null;
+    this.busy = false;
+    this.destroyed = false;
 
     this.render();
+    setTimeout(() => {
+      if (this.destroyed) return;
+      if (this.engine.isWon) this.showVictoryModal();
+      else if (this.engine.isLost) this.showDefeatModal();
+    }, 100);
   }
 
   destroy() {
+    this.destroyed = true;
     document.querySelectorAll('.mm-flying-plane').forEach(el => el.remove());
   }
 
@@ -34,7 +43,7 @@ export class MatchingtonUI {
     if (!this.container) return;
 
     this.container.innerHTML = `
-      <div class="matchington-app" id="matchingtonApp">
+      <div class="matchington-app mode-${this.activeMode}" id="matchingtonApp">
         <!-- Top Mode Switcher Bar -->
         <div class="mm-mode-bar">
           <button type="button" class="mm-mode-btn ${this.activeMode === 'puzzle' ? 'active' : ''}" id="mmModePuzzle">
@@ -92,6 +101,7 @@ export class MatchingtonUI {
         </div>
       </header>
 
+      <div class="play-cue"><strong>${this.engine.currentLevel.name}</strong><span>Swap neighbors to match 3. Tap a booster to use it.</span></div>
       <!-- 8x8 Tile Grid Board -->
       <main class="mm-board-container">
         <div class="mm-grid" id="mmGrid" style="--mm-rows: ${this.engine.currentLevel.rows}; --mm-cols: ${this.engine.currentLevel.cols};">
@@ -101,6 +111,7 @@ export class MatchingtonUI {
 
       <!-- Bottom Puzzle Controls -->
       <footer class="mm-footer">
+        <button type="button" class="mm-ctrl-btn" id="mmUndoBtn">${Icons.undo('btn-svg', 18)}<span>Undo</span></button>
         <button type="button" class="mm-ctrl-btn" id="mmGuideBtn" title="How to Play & Boosters">
           <span class="btn-ico">${Icons.lightbulb('btn-svg', 18)}</span>
           <span>Guide</span>
@@ -464,10 +475,12 @@ export class MatchingtonUI {
 
   attachEventListeners() {
     this.container.querySelector('#mmModePuzzle')?.addEventListener('click', () => {
+      if (this.busy) return;
       this.activeMode = 'puzzle';
       this.render();
     });
     this.container.querySelector('#mmModeMansion')?.addEventListener('click', () => {
+      if (this.busy) return;
       this.activeMode = 'mansion';
       this.render();
     });
@@ -484,14 +497,28 @@ export class MatchingtonUI {
     if (!grid) return;
 
     grid.addEventListener('pointerdown', (e) => {
+      if (this.busy) return;
       const cellEl = e.target.closest('.mm-cell');
       if (!cellEl) return;
       const r = parseInt(cellEl.dataset.r, 10);
       const c = parseInt(cellEl.dataset.c, 10);
       this.pointerStart = { r, c, x: e.clientX, y: e.clientY };
+      grid.setPointerCapture(e.pointerId);
     });
 
+    const resetDrag = () => grid.querySelectorAll('.mm-cell').forEach(el => { el.style.transform = ''; el.style.zIndex = ''; });
+    grid.addEventListener('pointermove', e => {
+      if (!this.pointerStart || this.busy) return;
+      const { r, c, x, y } = this.pointerStart;
+      const el = grid.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+      const size = el?.getBoundingClientRect().width || 40;
+      const dx = e.clientX - x, dy = e.clientY - y;
+      resetDrag();
+      if (el) { el.style.transform = Math.abs(dx) > Math.abs(dy) ? `translateX(${Math.max(-size, Math.min(size, dx))}px)` : `translateY(${Math.max(-size, Math.min(size, dy))}px)`; el.style.zIndex = '5'; }
+    });
+    grid.addEventListener('pointercancel', () => { resetDrag(); this.pointerStart = null; });
     grid.addEventListener('pointerup', (e) => {
+      resetDrag();
       if (!this.pointerStart) return;
       const dx = e.clientX - this.pointerStart.x;
       const dy = e.clientY - this.pointerStart.y;
@@ -510,7 +537,7 @@ export class MatchingtonUI {
         this.executeSwap(this.pointerStart.r, this.pointerStart.c, targetR, targetC);
         this.selectedCell = null;
       } else {
-        const cellEl = e.target.closest('.mm-cell');
+        const cellEl = grid.querySelector(`[data-r="${this.pointerStart.r}"][data-c="${this.pointerStart.c}"]`);
         if (cellEl) {
           const endR = parseInt(cellEl.dataset.r, 10);
           const endC = parseInt(cellEl.dataset.c, 10);
@@ -521,15 +548,23 @@ export class MatchingtonUI {
       this.pointerStart = null;
     });
 
+    this.container.querySelector('#mmUndoBtn')?.addEventListener('click', () => {
+      if (this.busy) return;
+      if (!this.engine.undoTurn?.()) { showToast('No turn to undo yet.', 'info', 1400); return; }
+      this.selectedCell = null;
+      this.updatePuzzleUI();
+    });
     this.container.querySelector('#mmGuideBtn')?.addEventListener('click', () => {
       this.showGuideModal();
     });
 
     this.container.querySelector('#mmLevelsBtn')?.addEventListener('click', () => {
+      if (this.busy) return;
       this.showLevelSelectModal();
     });
 
     this.container.querySelector('#mmRestartBtn')?.addEventListener('click', () => {
+      if (this.busy) return;
       sound.playPop(1);
       this.engine.restartLevel();
       this.selectedCell = null;
@@ -561,7 +596,8 @@ export class MatchingtonUI {
     setTimeout(() => flyer.remove(), 420);
   }
 
-  handleCellTap(r, c) {
+  async handleCellTap(r, c) {
+    if (this.busy) return;
     const tile = this.engine.grid[r]?.[c];
     if (!tile || tile.type === TILE_TYPES.EMPTY || tile.type === TILE_TYPES.WOOD) {
       this.selectedCell = null;
@@ -569,6 +605,17 @@ export class MatchingtonUI {
       return;
     }
 
+    if (!this.selectedCell && this.engine.isBooster(tile)) {
+      this.busy = true;
+      const res = this.engine.activateBooster(r, c);
+      sound.playRocket();
+      await playBoardTurn(this, '#mmGrid', () => this.renderGridHTML());
+      if (this.destroyed) return;
+      this.updatePuzzleUI();
+      this.busy = false;
+      this.checkGameStatus();
+      return;
+    }
     if (!this.selectedCell) {
       sound.playPop(1.1);
       this.selectedCell = { r, c };
@@ -608,11 +655,13 @@ export class MatchingtonUI {
     }
   }
 
-  executeSwap(r1, c1, r2, c2) {
+  async executeSwap(r1, c1, r2, c2) {
+    if (this.busy) return;
     if (r2 < 0 || r2 >= this.engine.currentLevel.rows || c2 < 0 || c2 >= this.engine.currentLevel.cols) {
       return;
     }
 
+    this.busy = true;
     const res = this.engine.swapTiles(r1, c1, r2, c2);
 
     if (res.status === 'invalid_swap') {
@@ -626,31 +675,38 @@ export class MatchingtonUI {
         c1El?.classList.remove('shake');
         c2El?.classList.remove('shake');
       }, 300);
-    } else if (res.status === 'swap_success' || res.status === 'combo_activated' || res.status === 'rainbow_activated') {
+    } else if (res.status === 'swap_success' || res.status === 'combo_activated' || res.status === 'rainbow_activated' || res.status === 'booster_detonated') {
       sound.playSwap();
-      if (res.createdBooster || res.status === 'combo_activated' || res.status === 'rainbow_activated') {
+      if (res.createdBooster || res.status === 'combo_activated' || res.status === 'rainbow_activated' || res.status === 'booster_detonated') {
         sound.playChime();
       } else {
         sound.playPop(1.2);
       }
       this.selectedCell = null;
+      await playBoardTurn(this, '#mmGrid', () => this.renderGridHTML());
+      if (this.destroyed) return;
       this.updatePuzzleUI();
       if (res.autoShuffled) {
         showToast('No swaps left - Auto-shuffling tiles!', 'shuffle', 2200);
       }
       this.checkGameStatus();
     }
+    this.busy = false;
   }
 
   checkGameStatus() {
     if (this.engine.isWon) {
-      setTimeout(() => this.showVictoryModal(), 550);
+      setTimeout(() => { if (!this.destroyed) this.showVictoryModal(); }, 550);
     } else if (this.engine.isLost) {
-      setTimeout(() => this.showDefeatModal(), 550);
+      setTimeout(() => { if (!this.destroyed) this.showDefeatModal(); }, 550);
     }
   }
 
   updatePuzzleUI() {
+    const level = this.container.querySelector('.mm-level-badge .lvl-num');
+    if (level) level.textContent = this.engine.levelIndex + 1;
+    const cue = this.container.querySelector('.play-cue strong');
+    if (cue) cue.textContent = this.engine.currentLevel.name;
     const grid = this.container.querySelector('#mmGrid');
     if (grid) grid.innerHTML = this.renderGridHTML();
 
@@ -832,7 +888,7 @@ export class MatchingtonUI {
     modal.innerHTML = `
       <div class="mm-modal-card defeat">
         <div class="mm-modal-header">
-          <h2>OUT OF MOVES!</h2>
+          <h2>A few more moves?</h2>
           <p>Form 2x2 squares for homing Paper Planes and 4-in-a-row for Rockets!</p>
         </div>
 
@@ -841,7 +897,7 @@ export class MatchingtonUI {
             Try Again
           </button>
           <button type="button" class="mm-modal-btn secondary" id="mmCloseDefeatBtn">
-            Close
+            Keep playing (+5 free moves)
           </button>
         </div>
       </div>
@@ -856,6 +912,10 @@ export class MatchingtonUI {
     });
 
     modal.querySelector('#mmCloseDefeatBtn')?.addEventListener('click', () => {
+      this.engine.isLost = false;
+      this.engine.movesLeft += 5;
+      this.engine.saveSession?.();
+      this.updatePuzzleUI();
       modal.remove();
     });
   }

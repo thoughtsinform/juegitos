@@ -31,6 +31,9 @@ export class WowEngine {
   }
 
   loadProgress() {
+    this.levelIndex = 0;
+    this.coins = 150;
+    this.stars = 0;
     try {
       const raw = localStorage.getItem(this.getStorageKey());
       if (raw) {

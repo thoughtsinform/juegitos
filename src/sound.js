@@ -7,6 +7,7 @@ class SoundController {
   constructor() {
     this.ctx = null;
     this.muted = false;
+    try { this.muted = localStorage.getItem('jueguitos_sound') === 'off'; } catch (e) {}
     this.initAudio = this.initAudio.bind(this);
   }
 

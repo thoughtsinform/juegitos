@@ -4,6 +4,7 @@
  * directional horizontal/vertical rotor propellers, particle bursts, and celebrations.
  */
 
+import { playBoardTurn } from '../board-motion.js';
 import { Icons } from '../icons.js';
 import { sound } from '../sound.js';
 import { CELL_TYPES } from './engine.js';
@@ -18,10 +19,18 @@ export class ToyBlastUI {
     this.onUserLogout = options.onUserLogout || (() => {});
     this.onUserSwitch = options.onUserSwitch || (() => {});
 
+    this.busy = false;
+    this.destroyed = false;
     this.render();
+    setTimeout(() => {
+      if (this.destroyed) return;
+      if (this.engine.isWon) this.showVictoryModal();
+      else if (this.engine.isLost) this.showDefeatModal();
+    }, 100);
   }
 
   destroy() {
+    this.destroyed = true;
     // Clean up any stray particle bursts
     document.querySelectorAll('.tb-particle-burst').forEach(el => el.remove());
   }
@@ -68,6 +77,7 @@ export class ToyBlastUI {
           </div>
         </header>
 
+        <div class="play-cue" id="tbPlayCue"><strong>${this.engine.currentLevel.name}</strong><span>Tap 2+ touching blocks of one color. Collect the goals above.</span></div>
         <!-- Main Toy Grid Board -->
         <main class="toyblast-board-wrap">
           <div class="toyblast-grid" id="tbGrid" style="--grid-rows: ${this.engine.currentLevel.rows}; --grid-cols: ${this.engine.currentLevel.cols};">
@@ -77,6 +87,7 @@ export class ToyBlastUI {
 
         <!-- Bottom Controls & Guide -->
         <footer class="toyblast-footer">
+          <button type="button" class="tb-ctrl-btn" id="tbUndoBtn">${Icons.undo('tb-icon', 18)}<span>Undo</span></button>
           <button type="button" class="tb-ctrl-btn" id="tbGuideBtn" title="How to Play & Boosters">
             <span class="tb-btn-icon">${Icons.lightbulb('tb-icon', 18)}</span>
             <span>Guide</span>
@@ -226,7 +237,7 @@ export class ToyBlastUI {
     }
 
     return `
-      <div class="${cellClass}" data-r="${r}" data-c="${c}">
+      <div class="${cellClass}" role="button" tabindex="0" aria-label="${cell.color || cell.type}, row ${r + 1}, column ${c + 1}" data-r="${r}" data-c="${c}">
         ${innerContent}
         ${bubbleHTML}
       </div>
@@ -234,7 +245,13 @@ export class ToyBlastUI {
   }
 
   attachEventListeners() {
+    this.container.querySelector('#tbUndoBtn')?.addEventListener('click', () => {
+      if (this.busy) return;
+      if (!this.engine.undoTurn?.()) { showToast('No turn to undo yet.', 'info', 1400); return; }
+      this.updateFullUI();
+    });
     const grid = this.container.querySelector('#tbGrid');
+    grid?.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.tb-cell')) { e.preventDefault(); e.target.closest('.tb-cell').click(); } });
     grid?.addEventListener('click', (e) => {
       const cellEl = e.target.closest('.tb-cell');
       if (!cellEl) return;
@@ -249,10 +266,12 @@ export class ToyBlastUI {
     });
 
     this.container.querySelector('#tbLevelsBtn')?.addEventListener('click', () => {
+      if (this.busy) return;
       this.showLevelSelectModal();
     });
 
     this.container.querySelector('#tbRestartBtn')?.addEventListener('click', () => {
+      if (this.busy) return;
       sound.playPop(0.9);
       this.engine.restartLevel();
       this.updateFullUI();
@@ -260,7 +279,9 @@ export class ToyBlastUI {
     });
   }
 
-  handleCellTap(r, c, cellEl) {
+  async handleCellTap(r, c, cellEl) {
+    if (this.busy) return;
+    this.busy = true;
     const res = this.engine.tapCell(r, c);
 
     if (res.status === 'blasted') {
@@ -269,6 +290,8 @@ export class ToyBlastUI {
         sound.playChime();
       }
       this.triggerBlastParticles(cellEl);
+      await playBoardTurn(this, '#tbGrid', () => this.renderGridHTML());
+      if (this.destroyed) return;
       this.updateFullUI();
       if (res.autoShuffled) {
         showToast('No clusters left - Auto-shuffling blocks!', 'shuffle', 2200);
@@ -289,20 +312,24 @@ export class ToyBlastUI {
       gridEl?.classList.add('board-shake');
       setTimeout(() => gridEl?.classList.remove('board-shake'), 300);
 
+      await playBoardTurn(this, '#tbGrid', () => this.renderGridHTML());
+      if (this.destroyed) return;
       this.updateFullUI();
       if (res.autoShuffled) {
         showToast('No clusters left - Auto-shuffling blocks!', 'shuffle', 2200);
       }
     } else if (res.status === 'group_too_small') {
       sound.playCardSlide();
+      showToast('Tap two or more blocks of the same color.', 'info', 1600);
       cellEl.classList.add('shake');
       setTimeout(() => cellEl.classList.remove('shake'), 300);
     }
 
+    this.busy = false;
     if (this.engine.isWon) {
-      setTimeout(() => this.showVictoryModal(), 550);
+      setTimeout(() => { if (!this.destroyed) this.showVictoryModal(); }, 550);
     } else if (this.engine.isLost) {
-      setTimeout(() => this.showDefeatModal(), 550);
+      setTimeout(() => { if (!this.destroyed) this.showDefeatModal(); }, 550);
     }
   }
 
@@ -329,6 +356,10 @@ export class ToyBlastUI {
   }
 
   updateFullUI() {
+    const level = this.container.querySelector('.level-num');
+    if (level) level.textContent = this.engine.levelIndex + 1;
+    const cue = this.container.querySelector('#tbPlayCue strong');
+    if (cue) cue.textContent = this.engine.currentLevel.name;
     const grid = this.container.querySelector('#tbGrid');
     if (grid) {
       grid.innerHTML = this.renderGridHTML();
@@ -406,7 +437,9 @@ export class ToyBlastUI {
       } else {
         this.engine.restartLevel();
       }
-      this.render();
+      this.busy = false;
+    this.destroyed = false;
+    this.render();
     });
 
     modal.querySelector('#tbCloseVicBtn')?.addEventListener('click', () => {
@@ -422,7 +455,7 @@ export class ToyBlastUI {
     modal.innerHTML = `
       <div class="tb-modal-card defeat">
         <div class="tb-modal-header">
-          <h2>OUT OF MOVES!</h2>
+          <h2>A few more moves?</h2>
           <p>Combine bigger cube clusters (5+, 7+, 9+) to create Rotors, Bombs, and Disco Balls!</p>
         </div>
 
@@ -438,7 +471,7 @@ export class ToyBlastUI {
             Try Again
           </button>
           <button type="button" class="tb-modal-btn secondary" id="tbCloseDefeatBtn">
-            Close
+            Keep playing (+5 free moves)
           </button>
         </div>
       </div>
@@ -453,6 +486,10 @@ export class ToyBlastUI {
     });
 
     modal.querySelector('#tbCloseDefeatBtn')?.addEventListener('click', () => {
+      this.engine.isLost = false;
+      this.engine.movesLeft += 5;
+      this.engine.saveSession?.();
+      this.updateFullUI();
       modal.remove();
     });
   }
@@ -502,7 +539,9 @@ export class ToyBlastUI {
         const idx = parseInt(btn.dataset.idx, 10);
         modal.remove();
         this.engine.initLevel(idx);
-        this.render();
+        this.busy = false;
+    this.destroyed = false;
+    this.render();
       });
     });
 

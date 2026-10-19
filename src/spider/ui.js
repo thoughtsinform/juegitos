@@ -21,6 +21,7 @@ export class SpiderUI {
     this.onUserSwitch = options.onUserSwitch || (() => {});
     this.currentUser = options.currentUser || { displayName: 'Ellen', avatar: 'assets/avatars/ellen.png' };
 
+    if (!this.engine.startTime) this.engine.startTime = Date.now() - this.engine.elapsedSeconds * 1000;
     this.selectedMove = null; // { colIdx, cardIdx }
     this.drawerOpen = this.getDefaultDrawerState();
     this.hudTimer = null;
@@ -33,6 +34,8 @@ export class SpiderUI {
   }
 
   destroy() {
+    this.engine.startTime = null;
+    this.engine.saveSession?.();
     if (this.hudTimer) {
       clearInterval(this.hudTimer);
       this.hudTimer = null;
@@ -45,16 +48,14 @@ export class SpiderUI {
   }
 
   getDefaultDrawerState() {
-    if (typeof window === 'undefined') return false;
-    return window.innerHeight > window.innerWidth;
+    return false;
   }
 
   handleOrientationResize() {
     const isPortrait = window.innerHeight > window.innerWidth;
     if (!isPortrait && this.drawerOpen) {
       this.setDrawerState(false);
-    } else if (isPortrait && !this.drawerOpen) {
-      this.setDrawerState(true);
+
     }
     this.renderTableau();
   }
@@ -85,6 +86,8 @@ export class SpiderUI {
           <div class="stock-area" id="stockArea" title="Tap to deal 10 cards (1 per column)"></div>
         </div>
 
+        <div class="spider-tip">Build down from King to Ace. Move a run of the same suit together.</div>
+        <div class="spider-quick-controls"><button type="button" id="spiderQuickUndo">Undo</button><button type="button" id="spiderQuickHint">Hint</button><button type="button" id="spiderQuickDeal">Deal 10</button></div>
         <!-- 3. Main 10-Column Tableau -->
         <div class="spider-tableau" id="tableauArea">
           ${Array.from({ length: 10 }, (_, idx) => `
@@ -166,6 +169,9 @@ export class SpiderUI {
   }
 
   attachGlobalEvents() {
+    this.container.querySelector('#spiderQuickUndo')?.addEventListener('click', () => this.handleUndo());
+    this.container.querySelector('#spiderQuickHint')?.addEventListener('click', () => this.showHint());
+    this.container.querySelector('#spiderQuickDeal')?.addEventListener('click', () => this.handleDealStock());
     window.addEventListener('resize', this.onResizeBound);
 
     const drawerToggle = this.container.querySelector('#drawerToggleBtn');
@@ -528,6 +534,7 @@ export class SpiderUI {
   }
 
   executeMove(fromCol, startIndex, toCol) {
+    const moving = [...this.container.querySelectorAll(`#col_${fromCol} .solitaire-card`)].slice(startIndex).map(el => el.getBoundingClientRect());
     const res = this.engine.moveSequence(fromCol, startIndex, toCol);
     if (res.success) {
       sound.playCardSnap();
@@ -536,6 +543,13 @@ export class SpiderUI {
       }
       this.selectedMove = null;
       this.renderBoard();
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !res.completedSuit) {
+        const target = [...this.container.querySelectorAll(`#col_${toCol} .solitaire-card`)].slice(-moving.length);
+        target.forEach((el, i) => {
+          const rect = el.getBoundingClientRect(), from = moving[i];
+          el.animate([{ transform: `translate(${from.left - rect.left}px, ${from.top - rect.top}px) scale(1.04)` }, { transform: 'translate(0,0) scale(1)' }], { duration: 260, easing: 'cubic-bezier(.18,.89,.32,1.12)' });
+        });
+      }
       this.checkWinCondition();
       return true;
     }
@@ -543,7 +557,45 @@ export class SpiderUI {
   }
 
   wireCardInteraction(cardEl, colIdx, cardIdx) {
+    let drag = null, dragged = false;
+    cardEl.addEventListener('pointerdown', e => {
+      if (!this.engine.isValidSequence(colIdx, cardIdx)) return;
+      drag = { x: e.clientX, y: e.clientY };
+      dragged = false;
+      cardEl.setPointerCapture(e.pointerId);
+    });
+    cardEl.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.hypot(dx, dy) > 8) dragged = true;
+      if (!dragged) return;
+      cardEl.parentElement.style.zIndex = '50';
+      [...cardEl.parentElement.children].slice(cardIdx).forEach(el => { el.style.transform = `translate(${dx}px, ${dy}px)`; el.style.pointerEvents = 'none'; });
+    });
+    const resetDrag = () => {
+      const parent = cardEl.parentElement;
+      if (parent) { parent.style.zIndex = ''; [...parent.children].forEach(el => { el.style.transform = ''; el.style.pointerEvents = ''; }); }
+      drag = null;
+    };
+    cardEl.addEventListener('pointercancel', resetDrag);
+    cardEl.addEventListener('pointerup', e => {
+      if (!drag) return;
+      const didDrag = dragged;
+      resetDrag();
+      if (!didDrag) return;
+      const candidates = [...this.container.querySelectorAll('.tableau-column')].map((el, col) => ({ col, rect: el.getBoundingClientRect() }));
+      const dest = candidates.filter(t => this.engine.canMoveSequence(colIdx, cardIdx, t.col)).sort((a,b) => Math.abs(e.clientX - (a.rect.left + a.rect.width / 2)) - Math.abs(e.clientX - (b.rect.left + b.rect.width / 2)))[0];
+      if (dest && Math.abs(e.clientX - (dest.rect.left + dest.rect.width / 2)) < Math.max(50, dest.rect.width)) this.executeMove(colIdx, cardIdx, dest.col);
+    });
+    if (this.engine.columns[colIdx][cardIdx]?.faceUp) {
+      const card = this.engine.columns[colIdx][cardIdx];
+      cardEl.setAttribute('role', 'button');
+      cardEl.setAttribute('tabindex', '0');
+      cardEl.setAttribute('aria-label', `${card.rank} of ${card.suit}, column ${colIdx + 1}`);
+      cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardEl.click(); } });
+    }
     cardEl.addEventListener('click', (e) => {
+      if (dragged) { dragged = false; return; }
       e.stopPropagation();
 
       // 1. If a card stack is currently selected in ANOTHER column, check if this column is a valid drop target!

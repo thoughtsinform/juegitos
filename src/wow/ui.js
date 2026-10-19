@@ -31,20 +31,39 @@ export class WowUI {
     this.drawerOpen = false;
     this.previewResetTimer = null;
 
+    this.onCancel = () => { this.isDragging = false; this.selectedIndices = []; this.clearCanvas(); this.syncWheelVisuals(); this.resetWordPreview(); };
+    this.onKey = e => {
+      if (e.target.closest('input, textarea') || e.ctrlKey || e.metaKey || e.altKey || this.hammerMode) return;
+      if (/^[a-z]$/i.test(e.key)) {
+        const idx = this.engine.wheelLetters.findIndex((ch,i) => ch === e.key.toUpperCase() && !this.selectedIndices.includes(i));
+        if (idx >= 0) { this.selectedIndices.push(idx); this.syncWheelVisuals(); }
+      } else if (e.key === 'Backspace') { e.preventDefault(); this.selectedIndices.pop(); this.syncWheelVisuals(); }
+      else if (e.key === 'Escape') this.onCancel();
+      else if (e.key === 'Enter' && this.selectedIndices.length) { const word = this.selectedIndices.map(i => this.engine.wheelLetters[i]).join(''); this.selectedIndices = []; this.syncWheelVisuals(); this.handleWordSubmission(word); }
+    };
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
     this.onPointerUp = this.onPointerUp.bind(this);
     this.onWindowResize = this.onWindowResize.bind(this);
 
     this.render();
+    setTimeout(() => {
+      if (this.destroyed) return;
+      if (this.engine.isLevelComplete) this.showVictoryModal();
+    }, 100);
     window.addEventListener('pointermove', this.onPointerMove, { passive: false });
     window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onCancel);
+    window.addEventListener('keydown', this.onKey);
     window.addEventListener('resize', this.onWindowResize);
   }
 
   destroy() {
     window.removeEventListener('pointermove', this.onPointerMove);
+    this.destroyed = true;
     window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onCancel);
+    window.removeEventListener('keydown', this.onKey);
     window.removeEventListener('resize', this.onWindowResize);
     if (this.previewResetTimer) {
       clearTimeout(this.previewResetTimer);
@@ -61,7 +80,7 @@ export class WowUI {
     if (!this.container) return;
 
     const lvl = this.engine.currentLevel;
-    const landmarkSvg = WONDER_LANDMARKS[((lvl.id - 1) % 4) + 1] || WONDER_LANDMARKS[1];
+    const landmarkSvg = WONDER_LANDMARKS[lvl.id] || WONDER_LANDMARKS[1];
 
     this.container.innerHTML = `
       <div class="wow-game-wrapper" id="wowWrapper" data-wonder-id="${lvl.id}">
@@ -100,7 +119,7 @@ export class WowUI {
         <!-- 2. Upper Crossword Matrix Area -->
         <section class="wow-board-area">
           <div class="wow-crossword-grid" id="wowCrosswordGrid"
-               style="grid-template-columns: repeat(${lvl.cols}, var(--cell-size)); grid-template-rows: repeat(${lvl.rows}, var(--cell-size));">
+               style="--wow-rows: ${lvl.rows}; --wow-cols: ${lvl.cols}; grid-template-columns: repeat(${lvl.cols}, var(--cell-size)); grid-template-rows: repeat(${lvl.rows}, var(--cell-size));">
             ${this.renderGridCellsHTML()}
           </div>
         </section>
@@ -151,6 +170,7 @@ export class WowUI {
           </div>
         </section>
 
+        <div class="wow-play-cue">Trace a word, then lift your finger. No timer. Take your time.</div>
         <!-- 4. Bottom Collapsible Settings Drawer -->
         <div class="bottom-drawer-wrapper ${this.drawerOpen ? 'is-open' : ''}" id="wowBottomDrawer">
           <button class="drawer-chevron-btn" id="wowDrawerToggleBtn" aria-label="Toggle Game Menu" title="Controls & Player Menu">
@@ -715,6 +735,7 @@ export class WowUI {
   }
 
   handleWordSubmission(word) {
+    if (this.engine.isLevelComplete) return;
     const res = this.engine.submitWord(word);
     const previewEl = this.container.querySelector('#wowWordPreview');
     const textEl = this.container.querySelector('#wowWordText');
@@ -726,6 +747,8 @@ export class WowUI {
 
       res.allWordCells.forEach(({ r, c }, idx) => {
         setTimeout(() => {
+          if (this.destroyed) return;
+          this.flyLetterToCell(r, c, this.engine.grid[r][c].char);
           this.revealSingleCellDOM(r, c, this.engine.grid[r][c].char, true);
         }, idx * 75);
       });
@@ -737,7 +760,7 @@ export class WowUI {
       this.updateHUDStats();
 
       if (res.isLevelComplete) {
-        setTimeout(() => this.showVictoryModal(), res.allWordCells.length * 80 + 500);
+        setTimeout(() => { if (!this.destroyed) this.showVictoryModal(); }, res.allWordCells.length * 80 + 500);
       }
     } else if (res.status === 'bonus_word') {
       sound.playCardSnap();
@@ -771,6 +794,19 @@ export class WowUI {
         this.resetWordPreview();
       }
     }, 850);
+  }
+
+  flyLetterToCell(r, c, char) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const from = this.container.querySelector('#wowWordPreview')?.getBoundingClientRect();
+    const to = this.container.querySelector(`#wow_cell_${r}_${c}`)?.getBoundingClientRect();
+    if (!from || !to) return;
+    const tile = document.createElement('span');
+    tile.className = 'wow-letter-flight'; tile.textContent = char;
+    Object.assign(tile.style, { left: `${from.left + from.width / 2}px`, top: `${from.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+    document.body.appendChild(tile);
+    const dx = to.left - from.left - from.width / 2, dy = to.top - from.top;
+    tile.animate([{ transform: 'translate(0,0) scale(.6)', opacity: .4 }, { transform: `translate(${dx * .5}px, ${dy * .5 - 35}px) scale(1.1)`, opacity: 1 }, { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 0 }], { duration: 360, easing: 'ease-out' }).finished.then(() => tile.remove());
   }
 
   resetWordPreview() {

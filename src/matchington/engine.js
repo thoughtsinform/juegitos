@@ -5,6 +5,8 @@
  * obstacles (Ice floor tiles, Parquet wood boards), and room renovation meta-progression.
  */
 
+import { recordMotion } from '../board-motion.js';
+import { seededRandom } from '../play-session.js';
 import { MATCHINGTON_LEVELS } from './levels.js';
 
 export const TILE_TYPES = {
@@ -21,6 +23,7 @@ export const TILE_TYPES = {
 export class MatchingtonEngine {
   constructor(username = 'Ellen') {
     this.username = username;
+    recordMotion(this);
     this.levelIndex = 0;
     this.score = 0;
     this.movesLeft = 0;
@@ -86,6 +89,7 @@ export class MatchingtonEngine {
   initLevel(levelIdx = 0) {
     this.levelIndex = Math.max(0, Math.min(levelIdx, MATCHINGTON_LEVELS.length - 1));
     const lvl = this.currentLevel;
+    this.randomState = (52189 + this.levelIndex * 2654435761) >>> 0;
 
     this.score = 0;
     this.movesLeft = lvl.moves;
@@ -171,8 +175,8 @@ export class MatchingtonEngine {
 
     const available = items.filter(it => !forbidden.has(it));
     const chosen = available.length > 0
-      ? available[Math.floor(Math.random() * available.length)]
-      : items[Math.floor(Math.random() * items.length)];
+      ? available[Math.floor(seededRandom(this) * available.length)]
+      : items[Math.floor(seededRandom(this) * items.length)];
 
     return {
       type: TILE_TYPES.ITEM,
@@ -252,6 +256,7 @@ export class MatchingtonEngine {
       return { status: 'game_over' };
     }
 
+    this.captureFrame('start');
     const dist = Math.abs(r1 - r2) + Math.abs(c1 - c2);
     if (dist !== 1) {
       return { status: 'not_adjacent' };
@@ -323,6 +328,12 @@ export class MatchingtonEngine {
       };
     }
 
+    if (this.isBooster(t1) || this.isBooster(t2)) {
+      this.grid[r1][c1] = t2;
+      this.grid[r2][c2] = t1;
+      return this.activateBooster(this.isBooster(t1) ? r2 : r1, this.isBooster(t1) ? c2 : c1);
+    }
+
     // Case 3: Regular Swap
     this.grid[r1][c1] = t2;
     this.grid[r2][c2] = t1;
@@ -361,6 +372,7 @@ export class MatchingtonEngine {
     const tile = this.grid[r]?.[c];
     if (!this.isBooster(tile)) return { status: 'not_booster' };
 
+    this.captureFrame('start');
     this.movesLeft--;
     const res = this.detonateSingleBooster(r, c);
     this.applyGravityAndRefill();
@@ -475,6 +487,29 @@ export class MatchingtonEngine {
   }
 
   resolveMatches(matchList, spawnPoint = null) {
+    const remaining = new Map(matchList.map(m => [`${m.r},${m.c}`, m]));
+    const groups = [];
+    while (remaining.size) {
+      const first = remaining.values().next().value;
+      const color = this.grid[first.r][first.c]?.color;
+      const pending = [first], group = [];
+      remaining.delete(`${first.r},${first.c}`);
+      while (pending.length) {
+        const m = pending.pop(); group.push(m);
+        for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const key = `${m.r + dr},${m.c + dc}`;
+          const next = remaining.get(key);
+          if (next && this.grid[next.r][next.c]?.color === color) { remaining.delete(key); pending.push(next); }
+        }
+      }
+      groups.push(group);
+    }
+    this.captureFrame?.('clear', matchList);
+    const results = groups.map(group => this.resolveMatchGroup(group, spawnPoint));
+    return { clearedPositions: results.flatMap(r => r.clearedPositions || []), createdBooster: results.find(r => r.createdBooster)?.createdBooster || null };
+  }
+
+  resolveMatchGroup(matchList, spawnPoint = null) {
     if (matchList.length === 0) return { clearedCount: 0 };
 
     let createdBooster = null;
@@ -720,7 +755,7 @@ export class MatchingtonEngine {
         }
       }
     }
-    return { r: Math.floor(Math.random() * rows), c: Math.floor(Math.random() * cols) };
+    return { r: Math.floor(seededRandom(this) * rows), c: Math.floor(seededRandom(this) * cols) };
   }
 
   triggerBoosterCombo(r1, c1, r2, c2) {
@@ -806,6 +841,7 @@ export class MatchingtonEngine {
    * Processes cleared tiles with full recursive chain-detonation when a blast hits another booster!
    */
   processClearedTiles(positions, excludeSet = new Set()) {
+    this.captureFrame('clear', positions);
     const queue = [...positions];
     const visited = new Set();
     const clearedList = [];
@@ -882,11 +918,12 @@ export class MatchingtonEngine {
         } else {
           this.grid[r][c] = {
             type: TILE_TYPES.ITEM,
-            color: this.currentLevel.items[Math.floor(Math.random() * this.currentLevel.items.length)]
+            color: this.currentLevel.items[Math.floor(seededRandom(this) * this.currentLevel.items.length)]
           };
         }
       }
     }
+    this.captureFrame('fall');
   }
 
   processCascades() {
@@ -914,6 +951,7 @@ export class MatchingtonEngine {
   }
 
   checkLevelOutcome() {
+    if (this.isWon || this.isLost) return;
     if (this.checkGoalsSatisfied()) {
       this.isWon = true;
 
