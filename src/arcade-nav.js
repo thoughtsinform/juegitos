@@ -4,6 +4,8 @@
  * authentication and the walking step counter active and synchronized.
  */
 
+import { Icons } from './icons.js';
+
 export const GAMES = {
   SPIDER: 'spider',
   WOW: 'wow'
@@ -42,11 +44,11 @@ export class ArcadeNav {
     this.container.innerHTML = `
       <nav class="arcade-tab-bar" id="arcadeTabBar" aria-label="Game Selection">
         <button type="button" class="arcade-tab-btn ${this.activeGame === GAMES.SPIDER ? 'active' : ''}" data-game="${GAMES.SPIDER}">
-          <span class="tab-emoji">🕷️</span>
+          <span class="tab-icon-wrap">${Icons.cards('tab-icon-svg', 18)}</span>
           <span class="tab-name">Spider</span>
         </button>
         <button type="button" class="arcade-tab-btn ${this.activeGame === GAMES.WOW ? 'active' : ''}" data-game="${GAMES.WOW}">
-          <span class="tab-emoji">🔤</span>
+          <span class="tab-icon-wrap">${Icons.tiles('tab-icon-svg', 18)}</span>
           <span class="tab-name">Words of Wonder</span>
         </button>
       </nav>
@@ -64,7 +66,8 @@ export class ArcadeNav {
 
   updateUI() {
     this.container?.querySelectorAll('.arcade-tab-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.game === this.activeGame);
+      const isCurrent = btn.dataset.game === this.activeGame;
+      btn.classList.toggle('active', isCurrent);
     });
   }
 }

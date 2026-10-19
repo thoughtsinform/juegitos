@@ -1,10 +1,11 @@
 /**
  * Words of Wonders (WoW) - UI Controller & Touch Anagram Wheel
- * Zen Nature Wonder Aesthetic | Outdoor Sunlight Legibility
+ * Zen Nature Wonder Aesthetic | Pure Vector Iconography (Zero Emojis)
  * High-performance Canvas Laser Trace & Trigonometric Letter Placement
  */
 
 import { sound } from '../sound.js';
+import { Icons } from '../icons.js';
 
 export class WowUI {
   constructor(engine, container, options = {}) {
@@ -19,7 +20,7 @@ export class WowUI {
     this.selectedIndices = []; // Indices into this.engine.wheelLetters
     this.currentPointer = null; // { x, y } relative to wheel
     this.nodePositions = []; // [{ x, y, letter, el }]
-    this.isTargetMode = false; // Hammer hint active
+    this.isTargetMode = false; // Hammer/Target hint active
 
     this.initDOM();
     this.initCanvas();
@@ -38,23 +39,23 @@ export class WowUI {
         <header class="wow-hud">
           <div class="wow-level-info">
             <div class="wow-level-wonder">
-              <span class="wow-wonder-emoji" id="wonderEmoji">🏛️</span>
+              <span class="wow-wonder-icon" id="wonderIcon">${Icons.monument('hud-monument-icon', 18)}</span>
               <span id="wonderTitle">Level 1: Giza</span>
             </div>
             <div class="wow-level-country" id="wonderCountry">EGYPT</div>
           </div>
 
           <div class="wow-hud-stats">
-            <button type="button" class="wow-bonus-jar-btn" id="bonusJarBtn" title="View Bonus Word Jar">
-              <span>🏺</span>
+            <button type="button" class="wow-bonus-jar-btn" id="bonusJarBtn" title="View Bonus Word Jar" aria-label="Bonus words jar">
+              ${Icons.jar('hud-jar-icon', 18)}
               <span id="bonusJarCount">0/5</span>
             </button>
             <div class="wow-stat-pill coins" title="Coins for hints">
-              <span>🪙</span>
+              ${Icons.coin('hud-coin-icon', 16)}
               <span id="hudCoinsVal">100</span>
             </div>
             <div class="wow-stat-pill stars" title="Total Stars">
-              <span>⭐</span>
+              ${Icons.star('hud-star-icon', 16)}
               <span id="hudStarsVal">0</span>
             </div>
           </div>
@@ -77,12 +78,12 @@ export class WowUI {
           <div class="wow-wheel-dock">
             <!-- Left Action Tools -->
             <div class="wow-tools-col tools-left">
-              <button type="button" class="wow-tool-btn tool-hint" id="hintLightbulbBtn" title="Reveal random letter (25 coins)">
-                <span class="tool-emoji">💡</span>
+              <button type="button" class="wow-tool-btn tool-hint" id="hintLightbulbBtn" title="Reveal random letter (25 coins)" aria-label="Random letter hint">
+                <span class="tool-icon-wrap">${Icons.lightbulb('tool-svg', 20)}</span>
                 <span class="tool-cost-badge">25</span>
               </button>
-              <button type="button" class="wow-tool-btn tool-target" id="hintHammerBtn" title="Target specific tile (25 coins)">
-                <span class="tool-emoji">🎯</span>
+              <button type="button" class="wow-tool-btn tool-target" id="hintHammerBtn" title="Target specific tile (25 coins)" aria-label="Target tile hint">
+                <span class="tool-icon-wrap">${Icons.hammer('tool-svg', 20)}</span>
                 <span class="tool-cost-badge">25</span>
               </button>
             </div>
@@ -92,8 +93,8 @@ export class WowUI {
               <canvas class="wow-wheel-canvas" id="wheelCanvas"></canvas>
               
               <!-- Center Shuffle Button in Wheel Hub -->
-              <button type="button" class="wow-wheel-center-shuffle" id="centerShuffleBtn" title="Shuffle letters">
-                <span>🔀</span>
+              <button type="button" class="wow-wheel-center-shuffle" id="centerShuffleBtn" title="Shuffle letters" aria-label="Shuffle letters">
+                ${Icons.shuffle('center-shuffle-svg', 18)}
               </button>
 
               <!-- Letter nodes will be injected here via trigonometry -->
@@ -102,11 +103,11 @@ export class WowUI {
 
             <!-- Right Action Tools -->
             <div class="wow-tools-col tools-right">
-              <button type="button" class="wow-tool-btn tool-shuffle" id="flankShuffleBtn" title="Shuffle letters">
-                <span class="tool-emoji">🔀</span>
+              <button type="button" class="wow-tool-btn tool-shuffle" id="flankShuffleBtn" title="Shuffle letters" aria-label="Shuffle letters">
+                <span class="tool-icon-wrap">${Icons.shuffle('tool-svg', 18)}</span>
               </button>
-              <button type="button" class="wow-tool-btn tool-info" id="levelInfoBtn" title="Level information">
-                <span class="tool-emoji">ℹ️</span>
+              <button type="button" class="wow-tool-btn tool-info" id="levelInfoBtn" title="Level information & rules" aria-label="Game rules and information">
+                <span class="tool-icon-wrap">${Icons.monument('tool-svg', 18)}</span>
               </button>
             </div>
           </div>
@@ -117,13 +118,13 @@ export class WowUI {
           <div class="wow-modal-card">
             <div class="wow-modal-header">
               <div class="wow-modal-title">
-                <span>🏺</span>
+                ${Icons.jar('modal-jar-icon', 22)}
                 <span>Bonus Words Jar</span>
               </div>
-              <button type="button" class="wow-modal-close-btn" id="closeBonusJarBtn">✕</button>
+              <button type="button" class="wow-modal-close-btn" id="closeBonusJarBtn" aria-label="Close">${Icons.close('', 16)}</button>
             </div>
-            <p style="font-size: 0.88rem; color: #94a3b8; margin: 0;">
-              Extra English words discovered that aren't on the crossword board. Every 5 words award <b>+1 ⭐ Star & +25 🪙 Coins</b>!
+            <p style="font-size: 0.88rem; color: #94a3b8; margin: 0; line-height: 1.4;">
+              Discovered valid English words that aren't part of the crossword board. Every 5 bonus words award <b>+1 Star & +25 Coins</b>!
             </p>
             <div class="wow-bonus-words-list" id="bonusWordsList">
               <span style="color: #64748b; font-size: 0.82rem; width: 100%;">No bonus words discovered yet. Try spelling extra words!</span>
@@ -132,16 +133,52 @@ export class WowUI {
           </div>
         </div>
 
-        <!-- 6. Wonder Victory Celebration Modal -->
+        <!-- 6. Wonder Info & Rules Modal -->
+        <div class="wow-modal-overlay" id="levelInfoModal">
+          <div class="wow-info-card">
+            <div class="wow-modal-header">
+              <div class="wow-modal-title">
+                ${Icons.monument('info-modal-icon', 22)}
+                <span id="infoModalWonderTitle">Wonder Guide</span>
+              </div>
+              <button type="button" class="wow-modal-close-btn" id="closeInfoModalBtn" aria-label="Close">${Icons.close('', 16)}</button>
+            </div>
+            
+            <p id="infoModalWonderDesc" style="font-size: 0.88rem; color: #cbd5e1; margin: 0; line-height: 1.45;"></p>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="wow-info-guide-row">
+                <div class="wow-info-icon-badge">${Icons.tiles('', 18)}</div>
+                <div><b>Crossword:</b> Drag across letter nodes on the wheel to spell words and solve the crossword grid.</div>
+              </div>
+              <div class="wow-info-guide-row">
+                <div class="wow-info-icon-badge">${Icons.coin('', 18)}</div>
+                <div><b>Coins:</b> Earn +10 per word and +50 per completed Wonder. Spend 25 coins on Lightbulb or Target hints when stuck.</div>
+              </div>
+              <div class="wow-info-guide-row">
+                <div class="wow-info-icon-badge">${Icons.star('', 18)}</div>
+                <div><b>Stars:</b> Earn +3 stars per completed Wonder and +1 per 5 bonus words. Compete on the Family Leaderboard!</div>
+              </div>
+            </div>
+
+            <button type="button" class="wow-btn-primary" id="infoModalOkBtn">Back to Puzzle</button>
+          </div>
+        </div>
+
+        <!-- 7. Wonder Victory Celebration Modal -->
         <div class="wow-modal-overlay" id="victoryModal">
           <div class="wow-victory-card">
-            <span class="wow-victory-trophy">🏆</span>
+            <span class="wow-victory-trophy">${Icons.trophy('vic-trophy-svg', 54)}</span>
             <h2 style="color: #fef3c7; font-size: 1.5rem; margin: 0;">Wonder Completed!</h2>
             <p id="vicWonderName" style="color: #38bdf8; font-weight: 700; margin: 0; font-size: 1.1rem;">Great Pyramid of Giza</p>
-            <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">You solved all crossword words!</p>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">All crossword words solved!</p>
             <div style="display: flex; gap: 16px; margin: 8px 0;">
-              <span style="color: #fbbf24; font-weight: 800; font-size: 1.1rem;">⭐ +3 Stars</span>
-              <span style="color: #fcd34d; font-weight: 800; font-size: 1.1rem;">🪙 +50 Coins</span>
+              <span style="color: #fbbf24; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+                ${Icons.star('', 18)} +3 Stars
+              </span>
+              <span style="color: #fcd34d; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;">
+                ${Icons.coin('', 18)} +50 Coins
+              </span>
             </div>
             <button type="button" class="wow-btn-primary" id="nextLevelBtn">Next Wonder →</button>
           </div>
@@ -156,47 +193,38 @@ export class WowUI {
     this.previewPillEl = this.container.querySelector('#wordPreviewPill');
     this.previewTextEl = this.container.querySelector('#wordPreviewText');
     this.bonusJarModalEl = this.container.querySelector('#bonusJarModal');
+    this.infoModalEl = this.container.querySelector('#levelInfoModal');
     this.victoryModalEl = this.container.querySelector('#victoryModal');
   }
 
   initCanvas() {
-    if (!this.canvasEl) return;
-    this.ctx = this.canvasEl.getContext('2d');
-    this.resizeCanvas();
-    window.addEventListener('resize', () => {
-      this.resizeCanvas();
-      this.positionLetterNodes();
-    });
-  }
-
-  resizeCanvas() {
     if (!this.canvasEl || !this.wheelDiscEl) return;
-    const rect = this.wheelDiscEl.getBoundingClientRect();
-    if (rect.width === 0) return;
     const dpr = window.devicePixelRatio || 1;
-    this.canvasEl.width = rect.width * dpr;
-    this.canvasEl.height = rect.height * dpr;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const rect = this.wheelDiscEl.getBoundingClientRect();
+    const size = rect.width || 280;
+
+    this.canvasEl.width = size * dpr;
+    this.canvasEl.height = size * dpr;
+    this.canvasEl.style.width = `${size}px`;
+    this.canvasEl.style.height = `${size}px`;
+
+    this.ctx = this.canvasEl.getContext('2d');
+    this.ctx.scale(dpr, dpr);
+    this.dpr = dpr;
   }
 
   wireEvents() {
-    // 1. Wheel Touch & Pointer Drag Events
-    const disc = this.wheelDiscEl;
-    if (disc) {
-      disc.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
-      window.addEventListener('pointermove', (e) => this.handlePointerMove(e));
-      window.addEventListener('pointerup', (e) => this.handlePointerUp(e));
-      window.addEventListener('pointercancel', (e) => this.handlePointerUp(e));
+    // 1. Drag interaction on Wheel Disc (PointerEvents for touch + mouse)
+    if (this.wheelDiscEl) {
+      this.wheelDiscEl.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+      window.addEventListener('pointermove', (e) => this.onPointerMove(e));
+      window.addEventListener('pointerup', (e) => this.onPointerUp(e));
+      window.addEventListener('pointercancel', (e) => this.onPointerUp(e));
     }
 
-    // 2. Shuffle Buttons (Center Hub & Flank)
+    // 2. Shuffle Buttons
     const doShuffle = () => {
-      sound.playCardSlide();
       this.triggerHaptic('light');
-      const centerBtn = this.container.querySelector('#centerShuffleBtn');
-      centerBtn?.classList.add('is-spinning');
-      setTimeout(() => centerBtn?.classList.remove('is-spinning'), 450);
-
       this.engine.shuffleLetters();
       this.positionLetterNodes();
     };
@@ -233,17 +261,24 @@ export class WowUI {
       this.bonusJarModalEl.classList.remove('is-active');
     });
 
-    // 6. Victory Modal Next Level
+    // 6. Level Info & Rules Modal
+    this.container.querySelector('#levelInfoBtn')?.addEventListener('click', () => {
+      this.openInfoModal();
+    });
+
+    this.container.querySelector('#closeInfoModalBtn')?.addEventListener('click', () => {
+      this.infoModalEl.classList.remove('is-active');
+    });
+
+    this.container.querySelector('#infoModalOkBtn')?.addEventListener('click', () => {
+      this.infoModalEl.classList.remove('is-active');
+    });
+
+    // 7. Victory Modal Next Level
     this.container.querySelector('#nextLevelBtn')?.addEventListener('click', () => {
       this.victoryModalEl.classList.remove('is-active');
       this.engine.nextLevel();
       this.render();
-    });
-
-    // 7. Level Info
-    this.container.querySelector('#levelInfoBtn')?.addEventListener('click', () => {
-      const lvl = this.engine.currentLevel;
-      alert(`🏛️ ${lvl.wonder}\n📍 ${lvl.country}\nLevel ${this.engine.levelIndex + 1} of ${this.engine.levels.length}`);
     });
   }
 
@@ -263,108 +298,40 @@ export class WowUI {
     const letters = this.engine.wheelLetters;
     const total = letters.length;
 
+    // Distribute evenly around the circle starting from top (-pi/2)
+    const angleStep = (2 * Math.PI) / total;
+
     for (let i = 0; i < total; i++) {
-      // Polar coordinates: theta starts at -PI/2 (12 o'clock)
-      const theta = (2 * Math.PI * i) / total - Math.PI / 2;
-      const x = cx + radius * Math.cos(theta);
-      const y = cy + radius * Math.sin(theta);
+      const angle = -Math.PI / 2 + i * angleStep;
+      const x = cx + radius * Math.cos(angle);
+      const y = cy + radius * Math.sin(angle);
 
-      const node = document.createElement('div');
-      node.className = 'wow-letter-node';
-      node.dataset.index = i.toString();
-      node.textContent = letters[i];
-      node.style.left = `${x}px`;
-      node.style.top = `${y}px`;
+      const nodeEl = document.createElement('div');
+      nodeEl.className = 'wow-letter-node';
+      nodeEl.dataset.index = i.toString();
+      nodeEl.textContent = letters[i];
+      nodeEl.style.left = `${x}px`;
+      nodeEl.style.top = `${y}px`;
 
-      this.letterContainerEl.appendChild(node);
+      this.letterContainerEl.appendChild(nodeEl);
 
       this.nodePositions.push({
         index: i,
         letter: letters[i],
         x,
         y,
-        el: node
+        radius: 30, // Hit testing radius
+        el: nodeEl
       });
     }
 
-    this.resizeCanvas();
-    this.drawLaserTrail();
+    this.clearCanvas();
   }
 
   // ========================================================
-  // POINTER & TOUCH GESTURE HANDLING
+  // TOUCH / MOUSE DRAG & HIT TESTING
   // ========================================================
-  handlePointerDown(e) {
-    if (this.isTargetMode) return;
-    const pt = this.getRelativePointer(e);
-    const hit = this.hitTestNode(pt.x, pt.y);
-
-    if (hit) {
-      this.isDragging = true;
-      this.selectedIndices = [hit.index];
-      this.currentPointer = { x: pt.x, y: pt.y };
-      hit.el.classList.add('is-selected');
-      
-      sound.playCardSnap();
-      this.triggerHaptic('light');
-      this.updateWordPreview();
-      this.drawLaserTrail();
-    }
-  }
-
-  handlePointerMove(e) {
-    if (!this.isDragging) return;
-    const pt = this.getRelativePointer(e);
-    this.currentPointer = { x: pt.x, y: pt.y };
-
-    const hit = this.hitTestNode(pt.x, pt.y);
-    if (hit) {
-      const lastIndex = this.selectedIndices[this.selectedIndices.length - 1];
-      // Backtracking (undo last letter if dragging back to previous node)
-      if (this.selectedIndices.length > 1 && 
-          hit.index === this.selectedIndices[this.selectedIndices.length - 2]) {
-        const removedIndex = this.selectedIndices.pop();
-        const removedNode = this.nodePositions[removedIndex];
-        removedNode?.el.classList.remove('is-selected');
-        sound.playCardSlide();
-        this.triggerHaptic('light');
-        this.updateWordPreview();
-      } 
-      // Connect new node if not yet selected
-      else if (!this.selectedIndices.includes(hit.index)) {
-        this.selectedIndices.push(hit.index);
-        hit.el.classList.add('is-selected');
-        sound.playCardSnap();
-        this.triggerHaptic('light');
-        this.updateWordPreview();
-      }
-    }
-
-    this.drawLaserTrail();
-  }
-
-  handlePointerUp() {
-    if (!this.isDragging) return;
-    this.isDragging = false;
-    this.currentPointer = null;
-
-    // Submit spelled word
-    const word = this.selectedIndices
-      .map(idx => this.nodePositions[idx]?.letter)
-      .join('');
-
-    this.clearSelectionVisuals();
-
-    if (word && word.length >= 2) {
-      this.processWordSubmission(word);
-    } else {
-      this.resetWordPreview();
-    }
-
-    this.drawLaserTrail();
-  }
-
-  getRelativePointer(e) {
+  getWheelRelativeCoords(e) {
     const rect = this.wheelDiscEl.getBoundingClientRect();
     return {
       x: e.clientX - rect.left,
@@ -372,33 +339,100 @@ export class WowUI {
     };
   }
 
-  hitTestNode(px, py) {
-    // Forgiving hit radius (34px) for comfortable outdoor walking
-    const hitRadius = 34;
+  findNodeAtCoords(coords) {
     for (const node of this.nodePositions) {
-      const dx = px - node.x;
-      const dy = py - node.y;
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+      const dx = coords.x - node.x;
+      const dy = coords.y - node.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= node.radius) {
         return node;
       }
     }
     return null;
   }
 
-  clearSelectionVisuals() {
-    this.nodePositions.forEach(n => n.el.classList.remove('is-selected'));
+  onPointerDown(e) {
+    if (this.isTargetMode) return;
+    const coords = this.getWheelRelativeCoords(e);
+    const node = this.findNodeAtCoords(coords);
+
+    if (node) {
+      this.isDragging = true;
+      this.selectedIndices = [node.index];
+      this.currentPointer = coords;
+
+      sound.initAudio();
+      sound.playCardSnap();
+      this.triggerHaptic('light');
+
+      this.updateWheelSelectionVisuals();
+      this.updateWordPreview();
+      this.drawConnectingLines();
+    }
+  }
+
+  onPointerMove(e) {
+    if (!this.isDragging) return;
+    const coords = this.getWheelRelativeCoords(e);
+    this.currentPointer = coords;
+
+    const node = this.findNodeAtCoords(coords);
+    if (node) {
+      const existingIdx = this.selectedIndices.indexOf(node.index);
+
+      if (existingIdx === -1) {
+        // New letter added to trail!
+        this.selectedIndices.push(node.index);
+        sound.playCardSnap();
+        this.triggerHaptic('light');
+        this.updateWheelSelectionVisuals();
+        this.updateWordPreview();
+      } else if (existingIdx === this.selectedIndices.length - 2) {
+        // Backtracked one letter: pop last selected
+        this.selectedIndices.pop();
+        sound.playCardSlide();
+        this.triggerHaptic('light');
+        this.updateWheelSelectionVisuals();
+        this.updateWordPreview();
+      }
+    }
+
+    this.drawConnectingLines();
+  }
+
+  onPointerUp() {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    this.currentPointer = null;
+
+    const spelledWord = this.selectedIndices
+      .map(idx => this.nodePositions[idx]?.letter || '')
+      .join('');
+
+    this.handleWordSubmit(spelledWord);
     this.selectedIndices = [];
+    this.updateWheelSelectionVisuals();
+    this.clearCanvas();
+  }
+
+  updateWheelSelectionVisuals() {
+    this.nodePositions.forEach(node => {
+      const isSelected = this.selectedIndices.includes(node.index);
+      node.el.classList.toggle('is-selected', isSelected);
+    });
   }
 
   // ========================================================
-  // DYNAMIC CANVAS LASER TRACE DRAWING
+  // CANVAS LASER LINE DRAWING
   // ========================================================
-  drawLaserTrail() {
-    if (!this.ctx || !this.wheelDiscEl) return;
-    const rect = this.wheelDiscEl.getBoundingClientRect();
-    this.ctx.clearRect(0, 0, rect.width, rect.height);
+  clearCanvas() {
+    if (!this.ctx || !this.canvasEl) return;
+    this.ctx.clearRect(0, 0, this.canvasEl.width / this.dpr, this.canvasEl.height / this.dpr);
+  }
 
-    if (this.selectedIndices.length === 0) return;
+  drawConnectingLines() {
+    this.clearCanvas();
+    if (this.selectedIndices.length === 0 || !this.ctx) return;
 
     const points = this.selectedIndices.map(idx => ({
       x: this.nodePositions[idx].x,
@@ -412,164 +446,131 @@ export class WowUI {
     if (points.length < 2) return;
 
     this.ctx.save();
-
-    // 1. Outer Neon Cyan Glow Pass
-    this.ctx.beginPath();
-    this.ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
-    }
-    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-    this.ctx.lineWidth = 14;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
-    this.ctx.shadowBlur = 18;
-    this.ctx.shadowColor = '#38bdf8';
-    this.ctx.stroke();
 
-    // 2. Inner Intense Laser Core Pass
+    // Outer Cyan Glow
     this.ctx.beginPath();
     this.ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
       this.ctx.lineTo(points[i].x, points[i].y);
     }
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 4;
-    this.ctx.shadowBlur = 8;
-    this.ctx.shadowColor = '#fbbf24';
+    this.ctx.lineWidth = 14;
+    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
     this.ctx.stroke();
 
-    // 3. Fingertip Glowing Bead
-    if (this.currentPointer) {
-      this.ctx.beginPath();
-      this.ctx.arc(this.currentPointer.x, this.currentPointer.y, 7, 0, 2 * Math.PI);
-      this.ctx.fillStyle = '#38bdf8';
-      this.ctx.shadowBlur = 12;
-      this.ctx.shadowColor = '#38bdf8';
-      this.ctx.fill();
-
-      this.ctx.beginPath();
-      this.ctx.arc(this.currentPointer.x, this.currentPointer.y, 3, 0, 2 * Math.PI);
-      this.ctx.fillStyle = '#ffffff';
-      this.ctx.fill();
+    // Medium Laser Line
+    this.ctx.beginPath();
+    this.ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      this.ctx.lineTo(points[i].x, points[i].y);
     }
+    this.ctx.lineWidth = 6;
+    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+    this.ctx.stroke();
+
+    // Inner White Core
+    this.ctx.beginPath();
+    this.ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      this.ctx.lineTo(points[i].x, points[i].y);
+    }
+    this.ctx.lineWidth = 2.5;
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.stroke();
 
     this.ctx.restore();
   }
 
   // ========================================================
-  // WORD PREVIEW PILL LOGIC
+  // FLOATING WORD PREVIEW
   // ========================================================
   updateWordPreview() {
+    if (!this.previewPillEl || !this.previewTextEl) return;
     const word = this.selectedIndices
-      .map(idx => this.nodePositions[idx]?.letter)
+      .map(idx => this.nodePositions[idx]?.letter || '')
       .join('');
-    
-    if (this.previewTextEl) {
-      this.previewTextEl.textContent = word || 'CONNECT LETTERS';
-    }
-    if (this.previewPillEl) {
+
+    if (word.length > 0) {
+      this.previewTextEl.textContent = word;
       this.previewPillEl.className = 'wow-word-preview is-typing';
+    } else {
+      this.resetWordPreview();
     }
   }
 
   resetWordPreview() {
-    if (this.previewTextEl) {
-      this.previewTextEl.textContent = 'CONNECT LETTERS';
-    }
-    if (this.previewPillEl) {
-      this.previewPillEl.className = 'wow-word-preview';
-    }
+    if (!this.previewPillEl || !this.previewTextEl) return;
+    this.previewPillEl.className = 'wow-word-preview';
+    this.previewTextEl.textContent = 'CONNECT LETTERS';
   }
 
   // ========================================================
-  // WORD SUBMISSION & ANIMATION ORCHESTRATION
+  // WORD SUBMISSION & VALIDATION
   // ========================================================
-  processWordSubmission(word) {
+  handleWordSubmit(word) {
+    if (!word || word.length < 2) {
+      this.resetWordPreview();
+      return;
+    }
+
     const res = this.engine.submitWord(word);
 
     if (res.status === 'success') {
-      this.handleSuccessWord(res);
-    } else if (res.status === 'bonus') {
-      this.handleBonusWord(res);
-    } else if (res.status === 'already_found') {
-      this.handleAlreadyFoundWord(word);
-    } else {
-      this.handleInvalidWord(word);
-    }
-
-    this.updateHUD();
-  }
-
-  handleSuccessWord(res) {
-    this.triggerHaptic('celebrate');
-    sound.playCardSnap();
-
-    // 1. Glow Preview Pill in Emerald
-    if (this.previewPillEl && this.previewTextEl) {
-      this.previewTextEl.textContent = `✓ ${res.word}`;
+      // 1. Success on crossword board
+      this.triggerHaptic('celebrate');
       this.previewPillEl.className = 'wow-word-preview is-success';
-    }
+      this.previewTextEl.innerHTML = `${Icons.check('pill-check-svg', 16)} ${res.word}`;
 
-    // 2. Reveal newly uncovered crossword tiles with 3D Flip
-    (res.newlyRevealed || []).forEach(({ row, col, letter }, idx) => {
-      const cellEl = this.boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      if (cellEl) {
-        setTimeout(() => {
+      // Reveal matching cells
+      res.newlyRevealed.forEach(({ row, col, letter }) => {
+        const cellEl = this.boardEl.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cellEl) {
           cellEl.textContent = letter;
           cellEl.classList.remove('is-slot');
           cellEl.classList.add('is-revealed', 'anim-flip');
           setTimeout(() => cellEl.classList.remove('anim-flip'), 600);
-        }, idx * 100);
-      }
-    });
+        }
+      });
 
-    // 3. Reset pill after animation
-    setTimeout(() => {
-      this.resetWordPreview();
+      this.updateHUD();
+
       if (res.isLevelComplete) {
-        this.triggerVictoryCelebration();
+        setTimeout(() => this.triggerVictoryCelebration(), 500);
       }
-    }, 1100);
-  }
-
-  handleBonusWord(res) {
-    this.triggerHaptic('medium');
-    sound.playCardSlide();
-
-    if (this.previewPillEl && this.previewTextEl) {
-      this.previewTextEl.textContent = `🏺 +5 🪙 ${res.word}!`;
+    } else if (res.status === 'bonus') {
+      // 2. Bonus Word added to Jar
+      this.triggerHaptic('medium');
       this.previewPillEl.className = 'wow-word-preview is-bonus';
+      this.previewTextEl.innerHTML = `${Icons.jar('pill-jar-svg', 16)} +5 Coins: ${res.word}!`;
+
+      const jarBtn = this.container.querySelector('#bonusJarBtn');
+      jarBtn?.classList.add('jar-pulse');
+      setTimeout(() => jarBtn?.classList.remove('jar-pulse'), 1000);
+
+      this.updateHUD();
+
+      if (res.jarFilled) {
+        sound.playStepGoalMet();
+        alert(`Bonus Jar Full! Earned +1 Star & +25 Coins!`);
+      }
+    } else if (res.status === 'already_found' || res.status === 'already_found_bonus') {
+      // 3. Already found word
+      this.triggerHaptic('light');
+      this.previewPillEl.className = 'wow-word-preview is-already';
+      this.previewTextEl.textContent = `${res.word} ALREADY FOUND`;
+    } else {
+      // 4. Invalid word (rejected!)
+      this.triggerHaptic('light');
+      this.previewPillEl.className = 'wow-word-preview is-error';
+      this.previewTextEl.textContent = `${word} NOT IN PUZZLE`;
+
+      // Shake crossword board
+      this.boardEl.classList.add('anim-shake');
+      setTimeout(() => this.boardEl.classList.remove('anim-shake'), 400);
     }
 
-    // Pulse bonus jar button
-    const jarBtn = this.container.querySelector('#bonusJarBtn');
-    jarBtn?.classList.add('jar-pulse');
-    setTimeout(() => jarBtn?.classList.remove('jar-pulse'), 1200);
-
-    setTimeout(() => this.resetWordPreview(), 1100);
-  }
-
-  handleAlreadyFoundWord(word) {
-    this.triggerHaptic('light');
-
-    if (this.previewPillEl && this.previewTextEl) {
-      this.previewTextEl.textContent = `Already Found: ${word}`;
-      this.previewPillEl.className = 'wow-word-preview is-already-found';
-    }
-
-    setTimeout(() => this.resetWordPreview(), 1100);
-  }
-
-  handleInvalidWord(word) {
-    this.triggerHaptic('light');
-
-    if (this.previewPillEl && this.previewTextEl) {
-      this.previewTextEl.textContent = word;
-      this.previewPillEl.className = 'wow-word-preview is-invalid';
-    }
-
-    setTimeout(() => this.resetWordPreview(), 700);
+    setTimeout(() => this.resetWordPreview(), 800);
   }
 
   // ========================================================
@@ -592,6 +593,10 @@ export class WowUI {
       setTimeout(() => cellEl.classList.remove('anim-flip'), 600);
     }
     this.updateHUD();
+
+    if (res.isLevelComplete) {
+      setTimeout(() => this.triggerVictoryCelebration(), 500);
+    }
   }
 
   toggleHammerMode() {
@@ -606,8 +611,8 @@ export class WowUI {
     });
 
     if (this.isTargetMode) {
-      this.previewTextEl.textContent = 'TAP ANY TILE TO REVEAL';
-      this.previewPillEl.className = 'wow-word-preview is-typing';
+      this.previewPillEl.className = 'wow-word-preview is-target-mode';
+      this.previewTextEl.innerHTML = `${Icons.hammer('pill-target-icon', 16)} TAP ANY UNSOLVED TILE`;
     } else {
       this.resetWordPreview();
     }
@@ -632,10 +637,14 @@ export class WowUI {
       setTimeout(() => cellEl.classList.remove('anim-flip'), 600);
     }
     this.updateHUD();
+
+    if (res.isLevelComplete) {
+      setTimeout(() => this.triggerVictoryCelebration(), 500);
+    }
   }
 
   // ========================================================
-  // BONUS JAR & VICTORY MODALS
+  // MODALS
   // ========================================================
   openBonusJarModal() {
     const listEl = this.container.querySelector('#bonusWordsList');
@@ -648,6 +657,21 @@ export class WowUI {
       }
     }
     this.bonusJarModalEl.classList.add('is-active');
+  }
+
+  openInfoModal() {
+    const lvl = this.engine.currentLevel;
+    const titleEl = this.container.querySelector('#infoModalWonderTitle');
+    const descEl = this.container.querySelector('#infoModalWonderDesc');
+
+    if (titleEl) {
+      titleEl.textContent = `${lvl.wonder} (${lvl.country})`;
+    }
+    if (descEl) {
+      descEl.textContent = lvl.description || 'Explore ancient architectural marvels while discovering words.';
+    }
+
+    this.infoModalEl.classList.add('is-active');
   }
 
   triggerVictoryCelebration() {
@@ -683,14 +707,9 @@ export class WowUI {
     const lvl = this.engine.currentLevel;
     const wonderTitle = this.container.querySelector('#wonderTitle');
     const wonderCountry = this.container.querySelector('#wonderCountry');
-    const wonderEmoji = this.container.querySelector('#wonderEmoji');
-
-    const emojis = ['🏛️', '🏟️', '🕌', '⛰️', '🏜️', '🗼', '⛩️', '🗿'];
-    const emoji = emojis[this.engine.levelIndex % emojis.length] || '🏛️';
 
     if (wonderTitle) wonderTitle.textContent = `Level ${this.engine.levelIndex + 1}: ${lvl.wonder}`;
     if (wonderCountry) wonderCountry.textContent = lvl.country.toUpperCase();
-    if (wonderEmoji) wonderEmoji.textContent = emoji;
 
     this.updateHUD();
   }

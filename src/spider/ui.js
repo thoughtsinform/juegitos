@@ -6,6 +6,7 @@
 
 import { CardRenderer } from './card-renderer.js';
 import { sound } from '../sound.js';
+import { Icons } from '../icons.js';
 
 export class SpiderUI {
   constructor(engine, container, options = {}) {
@@ -70,19 +71,19 @@ export class SpiderUI {
           <div class="drawer-content" id="drawerContent">
             <div class="drawer-row drawer-quick-actions">
               <button class="drawer-action-btn" id="drawerUndoBtn">
-                <span class="btn-icon">↩️</span>
+                <span class="btn-icon">${Icons.undo('', 20)}</span>
                 <span class="btn-text">Undo</span>
               </button>
               <button class="drawer-action-btn" id="drawerHintBtn">
-                <span class="btn-icon">💡</span>
+                <span class="btn-icon">${Icons.lightbulb('', 20)}</span>
                 <span class="btn-text">Hint</span>
               </button>
               <button class="drawer-action-btn" id="drawerNewGameBtn">
-                <span class="btn-icon">✨</span>
+                <span class="btn-icon">${Icons.sparkle('', 20)}</span>
                 <span class="btn-text">New Game</span>
               </button>
               <button class="drawer-action-btn" id="drawerRestartBtn">
-                <span class="btn-icon">🔄</span>
+                <span class="btn-icon">${Icons.restart('', 20)}</span>
                 <span class="btn-text">Restart</span>
               </button>
             </div>
@@ -98,8 +99,8 @@ export class SpiderUI {
 
             <div class="drawer-section drawer-footer-section">
               <div class="player-info-badge">
-                <span class="player-avatar">${this.currentUser.avatar || '👤'}</span>
-                <span class="player-name">Playing as <b>${this.currentUser.displayName || this.currentUser}</b></span>
+                <img class="player-avatar-img" src="${this.currentUser.avatar || 'assets/avatars/ellen.png'}" alt="${this.currentUser.displayName || 'Player'}">
+                <span class="player-name">Playing as <b>${this.currentUser.displayName || this.currentUser.username || 'Player'}</b></span>
               </div>
               <div class="drawer-footer-actions">
                 <button class="drawer-link-btn" id="drawerSwitchUserBtn">Switch Player</button>
@@ -112,7 +113,7 @@ export class SpiderUI {
         <!-- Victory Modal -->
         <div class="victory-modal" id="victoryModal">
           <div class="victory-card">
-            <span class="victory-trophy">🏆</span>
+            <span class="victory-trophy">${Icons.trophy('vic-trophy-svg', 54)}</span>
             <h2>Magnificent Victory!</h2>
             <p>You completed all 8 Spider sequences!</p>
             <div class="victory-stats">
@@ -342,7 +343,7 @@ export class SpiderUI {
           stockArea.appendChild(stockCard);
         }
       } else {
-        stockArea.innerHTML = `<div class="empty-stock-placeholder">✓</div>`;
+        stockArea.innerHTML = `<div class="empty-stock-placeholder">${Icons.check('', 18)}</div>`;
       }
     }
 

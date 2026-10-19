@@ -56,11 +56,38 @@ const hintRes = engine.useLightbulb();
 assert.strictEqual(hintRes.success, true, 'Lightbulb hint should succeed');
 assert.strictEqual(engine.coins, initialCoins - 25, 'Lightbulb should cost 25 coins');
 
-// Test completing level with ACT
-const resAct = engine.submitWord('ACT');
-assert.strictEqual(resAct.status, 'success');
-assert.strictEqual(resAct.isLevelComplete, true, 'Submitting ACT should complete Level 1!');
-assert.strictEqual(engine.isLevelWon, true, 'Level won flag should be set');
-assert.strictEqual(engine.stars >= 3, true, 'Should award at least 3 stars');
+// Test hint-driven completion (reveal all remaining cells via hints triggers victory)
+const engine2 = new WowEngine('Susan');
+engine2.coins = 500; // Give Susan enough coins
+// Reveal cells with lightbulb until complete
+let loops = 0;
+while (!engine2.isLevelWon && loops < 10) {
+  const h = engine2.useLightbulb();
+  if (!h.success) break;
+  loops++;
+}
+assert.strictEqual(engine2.isLevelWon, true, 'Using hints to reveal all cells must complete level');
+assert.strictEqual(engine2.solvedWords.size, engine2.currentLevel.words.length, 'All words must be marked solved');
+
+// Test dictionary validation: nonsense letters should NOT be accepted as bonus words
+const nonsenseRes = engine2.submitWord('PYL');
+assert.strictEqual(nonsenseRes.status, 'invalid', 'Nonsense word PYL must be invalid');
+
+// Validate all levels in WOW_LEVELS
+import { WOW_LEVELS } from '../src/wow/levels.js';
+for (const [idx, lvl] of WOW_LEVELS.entries()) {
+  const letters = [...lvl.letters];
+  for (const w of lvl.words) {
+    const wordLetters = [...w.word];
+    // Each word must be formable from level letters
+    const tempLetters = [...letters];
+    for (const ch of wordLetters) {
+      const charIdx = tempLetters.indexOf(ch);
+      assert.ok(charIdx !== -1, `Level ${idx + 1} (${lvl.wonder}): Word ${w.word} requires letter '${ch}' not available in wheel [${lvl.letters.join(',')}]`);
+      tempLetters.splice(charIdx, 1);
+    }
+  }
+}
 
 console.log('✓ All Words of Wonders Engine tests passed!');
+

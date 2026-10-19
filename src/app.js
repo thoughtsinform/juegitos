@@ -60,33 +60,41 @@ class App {
   }
 
   wireLoginForm() {
-    const susanBtn = document.getElementById('selectSusanBtn');
-    const ellenBtn = document.getElementById('selectEllenBtn');
+    const quickSelect = document.getElementById('loginQuickSelect');
     const usernameInput = document.getElementById('loginUsername');
     const passwordInput = document.getElementById('loginPassword');
     const submitBtn = document.getElementById('loginSubmitBtn');
     const errorEl = document.getElementById('loginError');
 
-    susanBtn?.addEventListener('click', () => {
-      susanBtn.classList.add('selected');
-      ellenBtn?.classList.remove('selected');
-      if (usernameInput) usernameInput.value = 'Susan';
-      if (passwordInput) {
-        passwordInput.value = '';
-        passwordInput.focus();
-      }
-      if (errorEl) errorEl.textContent = '';
-    });
+    const selectPlayer = (userId, autoSubmit = false) => {
+      const allUsers = Auth.getAllUsers();
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) return;
 
-    ellenBtn?.addEventListener('click', () => {
-      ellenBtn.classList.add('selected');
-      susanBtn?.classList.remove('selected');
-      if (usernameInput) usernameInput.value = 'Ellen';
+      quickSelect?.querySelectorAll('.player-select-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.user === userId);
+      });
+
+      if (usernameInput) usernameInput.value = user.displayName;
       if (passwordInput) {
-        passwordInput.value = '';
-        passwordInput.focus();
+        passwordInput.value = user.password;
       }
       if (errorEl) errorEl.textContent = '';
+
+      if (autoSubmit) {
+        handleLogin();
+      }
+    };
+
+    quickSelect?.querySelectorAll('.player-select-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.dataset.user;
+        selectPlayer(userId);
+      });
+      btn.addEventListener('dblclick', () => {
+        const userId = btn.dataset.user;
+        selectPlayer(userId, true);
+      });
     });
 
     const handleLogin = (e) => {
@@ -111,6 +119,9 @@ class App {
     passwordInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleLogin(e);
     });
+
+    // Default to Ellen
+    selectPlayer('ellen');
   }
 
   launchArcade() {

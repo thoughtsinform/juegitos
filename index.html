@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Juegitos - Mobile Arcade</title>
+  <title>Jueguitos - Mobile Arcade</title>
   <meta name="description" content="Custom ad-free mobile arcade for Ellen & Susan with integrated walking step counter.">
   <meta name="theme-color" content="#03200c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Juegitos">
+  <meta name="apple-mobile-web-app-title" content="Jueguitos">
   
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles/main.css">
@@ -27,22 +27,45 @@
     <!-- 3. The Main Game Area (Spider Solitaire or WoW) -->
     <main id="gameContainer"></main>
 
-    <!-- 3. Login Modal (Persistent Session for Susan & Ellen) -->
+    <!-- 4. Login Modal with 3D Avatars (Approved Players) -->
     <div class="login-overlay" id="loginModal" style="display: none;">
       <div class="login-card">
-        <span class="login-logo">🕹️</span>
-        <h1 class="login-title">Juegitos</h1>
-        <p class="login-subtitle">Ellen & Susan's Custom Mobile Arcade</p>
+        <div class="login-logo" id="loginLogo">
+          <svg class="svg-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="12" rx="6" fill="rgba(16, 185, 129, 0.2)"></rect>
+            <path d="M6 12h4M8 10v4" stroke-width="2.2"></path>
+            <circle cx="15.5" cy="10.5" r="1.2" fill="#34d399"></circle>
+            <circle cx="17.5" cy="13.5" r="1.2" fill="#34d399"></circle>
+          </svg>
+        </div>
+        <h1 class="login-title">Jueguitos</h1>
+        <p class="login-subtitle">Family Mobile Arcade</p>
 
-        <!-- Quick 1-Tap Player Selector -->
-        <div class="login-quick-select">
-          <button type="button" class="player-select-btn" id="selectSusanBtn">
-            <span class="emoji">🌸</span>
+        <!-- Quick 1-Tap Player Selector for all 6 approved players -->
+        <div class="login-quick-select" id="loginQuickSelect">
+          <button type="button" class="player-select-btn selected" data-user="ellen">
+            <img class="player-avatar-thumb" src="assets/avatars/ellen.png" alt="Ellen">
+            <span>Ellen</span>
+          </button>
+          <button type="button" class="player-select-btn" data-user="susan">
+            <img class="player-avatar-thumb" src="assets/avatars/susan.png" alt="Susan">
             <span>Susan</span>
           </button>
-          <button type="button" class="player-select-btn selected" id="selectEllenBtn">
-            <span class="emoji">🌻</span>
-            <span>Ellen</span>
+          <button type="button" class="player-select-btn" data-user="daniel">
+            <img class="player-avatar-thumb" src="assets/avatars/daniel.png" alt="Daniel">
+            <span>Daniel</span>
+          </button>
+          <button type="button" class="player-select-btn" data-user="rebekkah">
+            <img class="player-avatar-thumb" src="assets/avatars/rebekkah.png" alt="Rebekkah">
+            <span>Rebekkah</span>
+          </button>
+          <button type="button" class="player-select-btn" data-user="steph">
+            <img class="player-avatar-thumb" src="assets/avatars/steph.png" alt="Steph">
+            <span>Steph</span>
+          </button>
+          <button type="button" class="player-select-btn" data-user="trey">
+            <img class="player-avatar-thumb" src="assets/avatars/trey.png" alt="Trey">
+            <span>Trey</span>
           </button>
         </div>
 

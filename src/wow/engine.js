@@ -95,7 +95,7 @@ export class WowEngine {
       Array.from({ length: cols }, () => null)
     );
 
-    // Place words in grid with intersections
+    // Place words in grid with verified intersections
     for (const w of this.currentLevel.words) {
       const letters = w.word.toUpperCase().split('');
       for (let i = 0; i < letters.length; i++) {
@@ -111,7 +111,7 @@ export class WowEngine {
             wordIds: [w.id]
           };
         } else {
-          // Intersecting cell!
+          // Intersecting cell
           if (!this.grid[r][c].wordIds.includes(w.id)) {
             this.grid[r][c].wordIds.push(w.id);
           }
@@ -134,10 +134,10 @@ export class WowEngine {
    */
   submitWord(word) {
     if (!word) return { status: 'invalid' };
-    const upper = word.toUpperCase();
+    const upper = word.toUpperCase().trim();
 
     // 1. Check if word is on the Crossword Board
-    const match = this.currentLevel.words.find(w => w.word === upper);
+    const match = this.currentLevel.words.find(w => w.word.toUpperCase() === upper);
     if (match) {
       if (this.solvedWords.has(match.id)) {
         return { status: 'already_found', word: upper };
@@ -182,11 +182,10 @@ export class WowEngine {
       };
     }
 
-    // 2. Check if it's a valid Bonus Word (extra English words not on the grid)
-    const isBonus = (this.currentLevel.bonusWords || []).includes(upper) ||
-                    wowDictionary.canFormWord(upper, this.currentLevel.letters);
+    // 2. Check if it's a genuine Bonus Word (must be real English and not in puzzle)
+    const isBonus = wowDictionary.isValidBonusWord(upper, this.currentLevel);
 
-    if (isBonus && upper.length >= 2) {
+    if (isBonus) {
       if (this.bonusWordsFound.has(upper)) {
         return { status: 'already_found_bonus', word: upper };
       }
@@ -194,7 +193,7 @@ export class WowEngine {
       this.bonusWordsFound.add(upper);
       this.coins += 5; // +5 coins per bonus word
 
-      // Check bonus jar milestone
+      // Check bonus jar milestone (every 5 bonus words)
       let jarFilled = false;
       if (this.bonusWordsFound.size % 5 === 0) {
         jarFilled = true;
@@ -213,8 +212,49 @@ export class WowEngine {
       };
     }
 
-    // 3. Invalid word
+    // 3. Strictly invalid word (not in dictionary or not formable)
     return { status: 'invalid', word: upper };
+  }
+
+  /**
+   * Helper: check if cells revealed by hints complete any crossword words
+   * and check if the entire board is solved.
+   */
+  checkWordsCompletedByReveal() {
+    const newlySolvedWords = [];
+
+    for (const w of this.currentLevel.words) {
+      if (!this.solvedWords.has(w.id)) {
+        let allRevealed = true;
+        for (let i = 0; i < w.word.length; i++) {
+          const r = w.direction === 'H' ? w.row : w.row + i;
+          const c = w.direction === 'H' ? w.col + i : w.col;
+          if (!this.grid[r][c]?.isRevealed) {
+            allRevealed = false;
+            break;
+          }
+        }
+        if (allRevealed) {
+          this.solvedWords.add(w.id);
+          newlySolvedWords.push(w);
+        }
+      }
+    }
+
+    const isLevelComplete = this.solvedWords.size === this.currentLevel.words.length;
+    if (isLevelComplete && !this.isLevelWon) {
+      this.isLevelWon = true;
+      this.stars += 3;
+      this.coins += 50;
+      this.saveState();
+    } else {
+      this.saveState();
+    }
+
+    return {
+      isLevelComplete,
+      newlySolvedWords
+    };
   }
 
   /**
@@ -245,11 +285,15 @@ export class WowEngine {
     const target = unrevealedCells[Math.floor(Math.random() * unrevealedCells.length)];
     target.isRevealed = true;
     sound.playCardSnap();
-    this.saveState();
+
+    // Check if this reveal completed any words or the level
+    const progress = this.checkWordsCompletedByReveal();
 
     return {
       success: true,
-      cell: { row: target.row, col: target.col, letter: target.letter }
+      cell: { row: target.row, col: target.col, letter: target.letter },
+      isLevelComplete: progress.isLevelComplete,
+      newlySolvedWords: progress.newlySolvedWords
     };
   }
 
@@ -264,17 +308,21 @@ export class WowEngine {
     }
 
     const cell = this.grid[row]?.[col];
-    if (!cell) return { success: false, reason: 'Invalid tile' };
-    if (cell.isRevealed) return { success: false, reason: 'Already revealed' };
+    if (!cell) return { success: false, reason: 'Invalid tile selected.' };
+    if (cell.isRevealed) return { success: false, reason: 'Tile is already revealed.' };
 
     this.coins -= cost;
     cell.isRevealed = true;
     sound.playCardSnap();
-    this.saveState();
+
+    // Check if this reveal completed any words or the level
+    const progress = this.checkWordsCompletedByReveal();
 
     return {
       success: true,
-      cell: { row, col, letter: cell.letter }
+      cell: { row, col, letter: cell.letter },
+      isLevelComplete: progress.isLevelComplete,
+      newlySolvedWords: progress.newlySolvedWords
     };
   }
 
@@ -283,7 +331,7 @@ export class WowEngine {
       this.startLevel(this.levelIndex + 1);
       return true;
     }
-    // Loop back or stay at max
+    // Loop back to start
     this.startLevel(0);
     return true;
   }

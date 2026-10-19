@@ -5,6 +5,7 @@
  */
 
 import { sound } from './sound.js';
+import { Icons } from './icons.js';
 
 export class StepCounter {
   constructor(options = {}) {
@@ -217,8 +218,8 @@ export class StepCounter {
     overlay.innerHTML = `
       <div class="goal-modal-sheet">
         <div class="goal-sheet-header">
-          <span class="goal-sheet-title">🎯 Set Walking Step Goal</span>
-          <button class="goal-sheet-close" id="goalSheetCloseBtn">✕</button>
+          <span class="goal-sheet-title">${Icons.target('sheet-target-icon', 20)} Set Walking Step Goal</span>
+          <button class="goal-sheet-close" id="goalSheetCloseBtn" aria-label="Close">${Icons.close('', 16)}</button>
         </div>
 
         <div class="goal-chips-grid">
