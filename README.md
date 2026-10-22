@@ -1,4 +1,32 @@
-# Juegitos (juegitos.casas.lol)
+<!-- map:start. Written by ~/brain/bin/map from ~/brain/map.toml. Change the map, not this box. -->
+# Juegitos
+
+**TIF Lab · Active.** An ad-free mobile arcade for the family.
+
+| At a glance | |
+|---|---|
+| Live | Arcade: [juegitos.casas.lol](https://juegitos.casas.lol). Goes live: by hand (wrangler). |
+| Status and tasks | [2brain card `juegitos`](https://2brain.casas.lol/app#juegitos) |
+| Files (photos, video, Docs) | No Drive folder |
+| On the Macs | `~/Internal/juegitos` on the Mac Studio<br>`~/juegitos` on Daniel's MacBook Pro |
+| In T3 | TIF Lab · Juegitos |
+| Who can read this repo | Everyone. This repo is public. |
+| For agents | [AGENTS.md](AGENTS.md) · `~/brain/bin/map show juegitos` |
+| Note | The repo is public. The deploy publishes the repo root, so every file here is public. |
+
+**What is in here**
+
+| Folder | What it holds |
+|---|---|
+| `assets/` | Images, fonts and other site files |
+| `docs/` | Notes and how-tos |
+| `icons/` | App icons |
+| `src/` | App code |
+| `styles/` | Site styles |
+| `tests/` | Automated tests |
+<!-- map:end -->
+
+## Juegitos (juegitos.casas.lol)
 
 A custom, ad-free mobile arcade built for **Ellen and Susan** to play their favorite casual games and compete with each other—completely free of intrusive ads, predatory timers, pay-to-win microtransactions, or battery drain.
 
